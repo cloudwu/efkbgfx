@@ -4,6 +4,12 @@
 #include <bgfx/c99/bgfx.h>
 #include <Effekseer/Effekseer.h>
 
+#if EFXBGFX_EXPORTS 
+#define EFXBGFX_API __declspec(dllexport)
+#else
+#define EFXBGFX_API __declspec(dllimport)
+#endif
+
 namespace EffekseerRendererBGFX {
 	struct InitArgs {
 		int squareMaxCount;
@@ -18,7 +24,7 @@ namespace EffekseerRendererBGFX {
 	class Renderer;
 	using RendererRef = Effekseer::RefPtr<Renderer>;
 
-	class Renderer : public EffekseerRenderer::Renderer {
+	class EFXBGFX_API Renderer : public EffekseerRenderer::Renderer {
 	protected:
 		Renderer() = default;
 		virtual ~Renderer() = default;
