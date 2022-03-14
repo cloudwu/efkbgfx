@@ -691,7 +691,7 @@ public:
 
 	// Shader API
 	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) {
-		s->m_program = bgfx_create_program(vs, fs, false);
+		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;
 			return;
@@ -752,7 +752,7 @@ public:
 		for (i=from;i<to;i++) {
 			if (s->m_uniform[i].count == 0) {
 				info.name[0] = 0;
-				bgfx_get_uniform_info(s->m_uniform[i].handle, &info);
+				BGFX(get_uniform_info)(s->m_uniform[i].handle, &info);
 				if (strcmp(info.name, name) == 0) {
 					break;
 				}
