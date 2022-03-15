@@ -5,6 +5,7 @@
 
 #include <bx/uint32_t.h>
 #include <bx/math.h>
+#include <bx/readerwriter.h>
 #include <common.h>
 #include <bgfx_utils.h>
 #include <bgfx/c99/bgfx.h>
@@ -135,9 +136,41 @@ public:
 	uint32_t m_reset;
 
 private:
+	static const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const char* _filePath)
+	{
+		if (bx::open(_reader, _filePath) )
+		{
+			uint32_t size = (uint32_t)bx::getSize(_reader);
+			const bgfx::Memory* mem = bgfx::alloc(size+1);
+			bx::read(_reader, mem->data, size, bx::ErrorAssert{});
+			bx::close(_reader);
+			mem->data[mem->size-1] = '\0';
+			return mem;
+		}
+
+		DBG("Failed to load %s.", _filePath);
+		return NULL;
+	}
+
 	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
-		assert(false && "need impl");
-		return bgfx_shader_handle_t{uint16_t(-1)};
+		assert(mat == nullptr);
+		const char* shaderfile = nullptr;
+		if (strcmp(name, "sprite_unlit") == 0){
+			if (strcmp(type, "vs") == 0){
+				shaderfile = "shaders/vs_sprite_unlit.bin";
+			} else if (strcmp(type, "fs") == 0){
+				shaderfile = "shaders/fs_model_unlit.bin";
+			} else {
+				assert(false && "invalid shader type");
+			}
+		} else {
+			assert(false && "need impl");
+		}
+
+		bgfx::ShaderHandle handle = bgfx::createShader(loadMem(entry::getFileReader(), shaderfile) );
+		bgfx::setName(handle, shaderfile);
+		
+		return bgfx_shader_handle_t{handle.idx};
 	}
 
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
