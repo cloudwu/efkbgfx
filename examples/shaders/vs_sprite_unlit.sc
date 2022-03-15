@@ -7,14 +7,13 @@ $output v_color, v_texcoord0, v_posP
 
 #include <bgfx_shader.sh>
 
-// replace by u_view, u_viewProj
-// float4x4 mCamera;
-// float4x4 mCameraProj;
+uniform mat4 u_Camera;
+uniform mat4 u_CameraProj;
 uniform vec4 u_UVInversed;
 
 void main()
 {
-	v_posP = mul(u_viewProj, vec4(a_position, 1.0));
+	v_posP = mul(u_CameraProj, vec4(a_position, 1.0));
     gl_Position = v_posP;
 
     v_texcoord0 = vec2(a_texcoord0.x,
