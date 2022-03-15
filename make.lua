@@ -72,9 +72,13 @@ lm:copy "copy_bgfx" {
     output = "build/bin/" .. bgfxdll_name
 }
 
-lm:dll "efklib" {
+lm:lib "efklib" {
+    deps = "source_efklib",
+}
+
+lm:dll "efkbgfx_lib" {
     deps = {
-        "source_efklib",
+        "efklib",
         "source_efkbgfx",
         "copy_bgfx",
     },
@@ -91,7 +95,10 @@ local alloca_file_includes = {
     mingw = bxdir / "include/compat/mingw",
 }
 lm:exe "example"{
-    deps = "efklib",
+    deps = {
+        "efklib",
+        "efkbgfx_lib",
+    },
     includes = {
         alloca_file_includes[plat]:string(),
         efklib_includes,

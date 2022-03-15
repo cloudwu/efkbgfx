@@ -4,12 +4,13 @@
  */
 
 #include <bx/uint32_t.h>
+#include <bx/math.h>
 #include <common.h>
 #include <bgfx_utils.h>
 #include <bgfx/c99/bgfx.h>
 
 #include "renderer/bgfxrenderer.h"
-
+#define DEF_VIEWID	0
 
 namespace
 {
@@ -41,6 +42,30 @@ public:
 
 		auto inter = bgfx_get_interface(BGFX_API_VERSION);
 
+		EffekseerRendererBGFX::InitArgs efkArgs {
+			2048, DEF_VIEWID, inter,
+			EffekseerBgfxTest::ShaderLoad,
+			EffekseerBgfxTest::TextureLoad,
+			EffekseerBgfxTest::TextureUnload,
+			nullptr
+		};
+
+		m_efkRenderer = EffekseerRendererBGFX::CreateRenderer(&efkArgs);
+		m_efkManager = Effekseer::Manager::Create(8000);
+
+		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
+		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
+		m_efkManager->SetRingRenderer(m_efkRenderer->CreateRingRenderer());
+		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
+		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
+
+		// float proj[16];
+		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
+		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
+			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
+
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./Laser01.efk");
+
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
 
@@ -66,9 +91,34 @@ public:
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
 			// Set view 0 default viewport.
-			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
+			bgfx::setViewRect(DEF_VIEWID, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 
-			bgfx::touch(0);
+			static int s_time = 0;
+			static Effekseer::Handle s_handle = 0;
+			if (s_time == 0){
+				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+			} else {
+				++s_time;
+			}
+
+			if (s_time == 119){
+				m_efkManager->StopEffect(s_handle);
+				s_time = 0;
+			}
+
+			m_efkManager->AddLocation(s_handle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
+			m_efkManager->Update();
+
+			m_efkRenderer->SetTime(s_time / 60.0f);
+			m_efkRenderer->BeginRendering();
+
+			Effekseer::Manager::DrawParameter drawParameter;
+			drawParameter.ZNear = 0.0f;
+			drawParameter.ZFar = 1.0f;
+			drawParameter.ViewProjectionMatrix = m_efkRenderer->GetCameraProjectionMatrix();
+			m_efkManager->Draw(drawParameter);
+
+			m_efkRenderer->EndRendering();
 			bgfx::frame();
 
 			return true;
@@ -83,6 +133,25 @@ public:
 	uint32_t m_height;
 	uint32_t m_debug;
 	uint32_t m_reset;
+
+private:
+	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
+		assert(false && "need impl");
+		return bgfx_shader_handle_t{uint16_t(-1)};
+	}
+
+	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
+		assert(false && "need impl");
+		return bgfx_texture_handle_t{uint16_t(-1)};
+	}
+
+	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
+		assert(false && "need impl");
+	}
+private:
+	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
+	Effekseer::ManagerRef m_efkManager = nullptr;
+	Effekseer::EffectRef m_efkEffect = nullptr;
 };
 
 } // namespace
