@@ -175,14 +175,14 @@ public:
 	}
 };
 
-struct ShaderLoader {
-	void *ud;
-	bgfx_shader_handle_t (*loader)(const char *mat, const char *name, const char *type, void *ud);
+//struct ShaderLoader {
+//	void *ud;
+//	bgfx_shader_handle_t (*loader)(const char *mat, const char *name, const char *type, void *ud);
 
-	bgfx_shader_handle_t Load(const char *mat, const char *name, const char *type) const {
-		return loader(mat, name, type, ud);
-	}
-};
+//	bgfx_shader_handle_t Load(const char *mat, const char *name, const char *type) const {
+//		return loader(mat, name, type, ud);
+//	}
+//};
 
 class RenderState : public EffekseerRenderer::RenderStateBase {
 private:
@@ -263,7 +263,6 @@ private:
 	bgfx_vertex_layout_handle_t m_layout[SHADERCOUNT];
 	bgfx_vertex_layout_t m_maxlayout;
 	Shader * m_shaders[SHADERCOUNT];
-	ShaderLoader m_shaderLoader;
 	InitArgs m_initArgs;
 
 	//! because gleDrawElements has only index offset
@@ -432,8 +431,6 @@ private:
 	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
-		m_shaderLoader.ud = init->ud;
-		m_shaderLoader.loader = init->shader_load;
 		static const char *shadername[SHADERCOUNT] = {
 			"sprite_unlit",
 			"sprite_lit",
@@ -447,8 +444,8 @@ private:
 			Shader * s = new Shader(this);
 			m_shaders[i] = s;
 			InitShader(s,
-				m_shaderLoader.Load(NULL, shadername[i], "vs"),
-				m_shaderLoader.Load(NULL, shadername[i], "fs"));
+				LoadShader(NULL, shadername[i], "vs"),
+				LoadShader(NULL, shadername[i], "fs"));
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
 			AddUniform(s, "u_UVInversed", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, uvInversed));
@@ -696,6 +693,10 @@ public:
 	virtual int GetRef() override { return Effekseer::ReferenceObject::GetRef(); }
 	virtual int AddRef() override { return Effekseer::ReferenceObject::AddRef(); }
 	virtual int Release() override { return Effekseer::ReferenceObject::Release(); }
+
+	bgfx_shader_handle_t LoadShader(const char *mat, const char *name, const char *type) const {
+		return m_initArgs.shader_load(mat, name, type, m_initArgs.ud);
+	}
 
 	// Shader API
 	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) {
