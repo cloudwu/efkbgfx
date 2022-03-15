@@ -97,6 +97,7 @@ lm:exe "example"{
         efklib_includes,
         (bgfx_example_dir / "common"):string(),
         (bimgdir / "include"):string(),
+        "./",
     },
     sources = {
         "examples/example.cpp",
