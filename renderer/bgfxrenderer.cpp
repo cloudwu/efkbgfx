@@ -113,6 +113,10 @@ public:
 	Effekseer::Backend::VertexLayoutRef CreateVertexLayout(const Effekseer::Backend::VertexLayoutElement* elements, int32_t elementCount) override {
 		return Effekseer::MakeRefPtr<VertexLayout>(elements, elementCount);
 	}
+	// For ModelRenderer
+//	Effekseer::Backend::VertexBufferRef CreateVertexBuffer(int32_t size, const void* initialData, bool isDynamic) override;
+	Effekseer::Backend::IndexBufferRef CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) override;
+
 	std::string GetDeviceName() const override {
 		return "BGFX";
 	}
@@ -792,7 +796,7 @@ public:
 		}
 	}
 
-	Effekseer::Backend::TextureRef CreateTexture(const Effekseer::Backend::TextureParameter& param, const Effekseer::CustomVector<uint8_t>& initialData) {
+	Effekseer::Backend::TextureRef CreateTexture(const Effekseer::Backend::TextureParameter& param, const Effekseer::CustomVector<uint8_t>& initialData) const {
 		// Only for CreateProxyTexture, See EffekseerRendererCommon/EffekseerRenderer.Renderer.cpp
 		assert(param.Format == Effekseer::Backend::TextureFormatType::R8G8B8A8_UNORM);
 		assert(param.Dimension == 2);
@@ -806,6 +810,14 @@ public:
 	void ReleaseTexture(Texture *t) const {
 		BGFX(destroy_texture)(t->RemoveInterface());
 	}
+	Effekseer::Backend::IndexBufferRef CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) const {
+		int s = (stride == Effekseer::Backend::IndexBufferStrideType::Stride4) ? 4 : 2;
+		const bgfx_memory_t *mem = BGFX(copy)(initialData, elementCount * s);
+		bgfx_index_buffer_handle_t handle = BGFX(create_index_buffer)(mem, s == 4 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE);
+
+		return Effekseer::MakeRefPtr<StaticIndexBuffer>(this, handle);
+	}
+
 	void ReleaseIndexBuffer(StaticIndexBuffer *ib) const {
 		BGFX(destroy_index_buffer)(ib->GetInterface());
 	}
@@ -868,6 +880,10 @@ void RenderState::Update(bool forced) {
 
 Effekseer::Backend::TextureRef GraphicsDevice::CreateTexture(const Effekseer::Backend::TextureParameter& param, const Effekseer::CustomVector<uint8_t>& initialData) {
 	return m_render->CreateTexture(param, initialData);
+}
+
+Effekseer::Backend::IndexBufferRef GraphicsDevice::CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) {
+	return m_render->CreateIndexBuffer(elementCount, initialData, stride);
 }
 
 Texture::~Texture() {
