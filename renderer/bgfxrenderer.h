@@ -3,6 +3,7 @@
 
 #include <bgfx/c99/bgfx.h>
 #include <Effekseer/Effekseer.h>
+#include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 
 namespace EffekseerRendererBGFX {
 	struct InitArgs {
