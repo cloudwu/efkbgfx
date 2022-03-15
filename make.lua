@@ -72,9 +72,13 @@ lm:copy "copy_bgfx" {
     output = "build/bin/" .. bgfxdll_name
 }
 
-lm:dll "efklib" {
+lm:lib "efklib" {
+    deps = "source_efklib",
+}
+
+lm:dll "efkbgfx_lib" {
     deps = {
-        "source_efklib",
+        "efklib",
         "source_efkbgfx",
         "copy_bgfx",
     },
@@ -91,12 +95,16 @@ local alloca_file_includes = {
     mingw = bxdir / "include/compat/mingw",
 }
 lm:exe "example"{
-    deps = "efklib",
+    deps = {
+        "efklib",
+        "efkbgfx_lib",
+    },
     includes = {
         alloca_file_includes[plat]:string(),
         efklib_includes,
         (bgfx_example_dir / "common"):string(),
         (bimgdir / "include"):string(),
+        "./",
     },
     sources = {
         "examples/example.cpp",
@@ -130,3 +138,60 @@ lm:exe "example"{
         bgfxbin_dir:string(),
     }
 }
+
+local platform_renderers = {
+    windows = "direct3d11",
+    ios = "metal",
+    macos = "metal",
+    linux = "vulkan",
+    android = "vulkan",
+}
+
+local cwd = fs.current_path()
+local example_shader_dir = fs.path "./examples/shaders"
+local shaderfiles = {
+    {
+        file = cwd / example_shader_dir / "vs_sprite_unlit.sc",
+        defines = {}
+    },
+    {
+        file = cwd / example_shader_dir / "fs_model_unlit.sc",
+        defines = {},
+    }
+}
+
+local shaderc = cwd / bgfxbin_dir / ("shaderc%s.exe"):format(name_suffix)
+
+local sc = require "buildscripts.shader_compile"
+
+local function print_cfg(cfg)
+    for k, v in pairs(cfg) do
+        print(k, tostring(v))
+    end
+end
+
+for _, sf in ipairs(shaderfiles) do
+    local f = sf.file
+    local output = fs.path(f):replace_extension "bin":string()
+    local cfg = {
+        renderer = platform_renderers[lm.os],
+        stage = f:string():match "([vfc]s)_",
+        plat = lm.os,
+        optimizelevel = 3,
+        --debug = true,
+        includes = {
+            cwd / bgfxdir / "src",
+            cwd / bgfx_example_dir / "common",
+        },
+        defines = sf.defines,
+        input = f:string(),
+        output = output
+    }
+
+    --print_cfg(cfg)
+
+    local cmd = sc.gen_cmd(shaderc:string(), cfg)
+    --print(table.concat(cmd, " "))
+
+    lm:build(cmd)
+end

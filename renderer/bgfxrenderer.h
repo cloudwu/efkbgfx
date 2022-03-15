@@ -5,6 +5,16 @@
 #include <Effekseer/Effekseer.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 
+#ifdef _MSC_VER
+#	if EFXBGFX_EXPORTS 
+#		define EFXBGFX_API __declspec(dllexport)
+#	else
+#		define EFXBGFX_API __declspec(dllimport)
+#	endif
+#else //!_MSC_VER
+#	define EFXBGFX_API
+#endif //_MSC_VER
+
 namespace EffekseerRendererBGFX {
 	struct InitArgs {
 		int squareMaxCount;
@@ -16,7 +26,7 @@ namespace EffekseerRendererBGFX {
 		void * ud;
 	};
 
-	EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init);
+	EFXBGFX_API EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init);
 }
 
 #endif

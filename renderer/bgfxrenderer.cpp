@@ -957,7 +957,7 @@ public:
 		}
 
 		if (i >= to) {
-			ReleaseShader(s);
+			//ReleaseShader(s);
 			return;
 		}
 

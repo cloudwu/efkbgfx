@@ -4,8 +4,14 @@
  */
 
 #include <bx/uint32_t.h>
-#include "common.h"
-#include "bgfx_utils.h"
+#include <bx/math.h>
+#include <bx/readerwriter.h>
+#include <common.h>
+#include <bgfx_utils.h>
+#include <bgfx/c99/bgfx.h>
+
+#include "renderer/bgfxrenderer.h"
+#define DEF_VIEWID	0
 
 namespace
 {
@@ -35,6 +41,32 @@ public:
 		init.resolution.reset  = m_reset;
 		bgfx::init(init);
 
+		auto inter = bgfx_get_interface(BGFX_API_VERSION);
+
+		EffekseerRendererBGFX::InitArgs efkArgs {
+			2048, DEF_VIEWID, inter,
+			EffekseerBgfxTest::ShaderLoad,
+			EffekseerBgfxTest::TextureLoad,
+			EffekseerBgfxTest::TextureUnload,
+			nullptr
+		};
+
+		m_efkRenderer = EffekseerRendererBGFX::CreateRenderer(&efkArgs);
+		m_efkManager = Effekseer::Manager::Create(8000);
+
+		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
+		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
+		m_efkManager->SetRingRenderer(m_efkRenderer->CreateRingRenderer());
+		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
+		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
+
+		// float proj[16];
+		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
+		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
+			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
+
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./Laser01.efk");
+
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
 
@@ -60,29 +92,34 @@ public:
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
 			// Set view 0 default viewport.
-			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
+			bgfx::setViewRect(DEF_VIEWID, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 
-			// This dummy draw call is here to make sure that view 0 is cleared
-			// if no other draw calls are submitted to view 0.
-			bgfx::touch(0);
+			static int s_time = 0;
+			static Effekseer::Handle s_handle = 0;
+			if (s_time == 0){
+				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+			} else {
+				++s_time;
+			}
 
-			// // Use debug font to print information about this example.
-			// bgfx::dbgTextClear();
-			// bgfx::dbgTextPrintf(0, 1, 0x0f, "Color can be changed with ANSI \x1b[9;me\x1b[10;ms\x1b[11;mc\x1b[12;ma\x1b[13;mp\x1b[14;me\x1b[0m code too.");
+			if (s_time == 119){
+				m_efkManager->StopEffect(s_handle);
+				s_time = 0;
+			}
 
-			// bgfx::dbgTextPrintf(80, 1, 0x0f, "\x1b[;0m    \x1b[;1m    \x1b[; 2m    \x1b[; 3m    \x1b[; 4m    \x1b[; 5m    \x1b[; 6m    \x1b[; 7m    \x1b[0m");
-			// bgfx::dbgTextPrintf(80, 2, 0x0f, "\x1b[;8m    \x1b[;9m    \x1b[;10m    \x1b[;11m    \x1b[;12m    \x1b[;13m    \x1b[;14m    \x1b[;15m    \x1b[0m");
+			m_efkManager->AddLocation(s_handle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
+			m_efkManager->Update();
 
-			// const bgfx::Stats* stats = bgfx::getStats();
-			// bgfx::dbgTextPrintf(0, 2, 0x0f, "Backbuffer %dW x %dH in pixels, debug text %dW x %dH in characters."
-			// 	, stats->width
-			// 	, stats->height
-			// 	, stats->textWidth
-			// 	, stats->textHeight
-			// 	);
+			m_efkRenderer->SetTime(s_time / 60.0f);
+			m_efkRenderer->BeginRendering();
 
-			// Advance to next frame. Rendering thread will be kicked to
-			// process submitted rendering primitives.
+			Effekseer::Manager::DrawParameter drawParameter;
+			drawParameter.ZNear = 0.0f;
+			drawParameter.ZFar = 1.0f;
+			drawParameter.ViewProjectionMatrix = m_efkRenderer->GetCameraProjectionMatrix();
+			m_efkManager->Draw(drawParameter);
+
+			m_efkRenderer->EndRendering();
 			bgfx::frame();
 
 			return true;
@@ -97,6 +134,57 @@ public:
 	uint32_t m_height;
 	uint32_t m_debug;
 	uint32_t m_reset;
+
+private:
+	static const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const char* _filePath)
+	{
+		if (bx::open(_reader, _filePath) )
+		{
+			uint32_t size = (uint32_t)bx::getSize(_reader);
+			const bgfx::Memory* mem = bgfx::alloc(size+1);
+			bx::read(_reader, mem->data, size, bx::ErrorAssert{});
+			bx::close(_reader);
+			mem->data[mem->size-1] = '\0';
+			return mem;
+		}
+
+		DBG("Failed to load %s.", _filePath);
+		return NULL;
+	}
+
+	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
+		assert(mat == nullptr);
+		const char* shaderfile = nullptr;
+		if (strcmp(name, "sprite_unlit") == 0){
+			if (strcmp(type, "vs") == 0){
+				shaderfile = "shaders/vs_sprite_unlit.bin";
+			} else if (strcmp(type, "fs") == 0){
+				shaderfile = "shaders/fs_model_unlit.bin";
+			} else {
+				assert(false && "invalid shader type");
+			}
+		} else {
+			assert(false && "need impl");
+		}
+
+		bgfx::ShaderHandle handle = bgfx::createShader(loadMem(entry::getFileReader(), shaderfile) );
+		bgfx::setName(handle, shaderfile);
+		
+		return bgfx_shader_handle_t{handle.idx};
+	}
+
+	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
+		assert(false && "need impl");
+		return bgfx_texture_handle_t{uint16_t(-1)};
+	}
+
+	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
+		assert(false && "need impl");
+	}
+private:
+	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
+	Effekseer::ManagerRef m_efkManager = nullptr;
+	Effekseer::EffectRef m_efkEffect = nullptr;
 };
 
 } // namespace
