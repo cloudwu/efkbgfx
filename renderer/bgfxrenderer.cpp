@@ -222,6 +222,14 @@ public:
 	}
 };
 
+class Renderer : public EffekseerRenderer::Renderer {
+public:
+	Renderer() = default;
+	virtual ~Renderer() = default;
+	virtual int32_t GetSquareMaxCount() const = 0;
+	virtual void SetSquareMaxCount(int32_t count) = 0;
+};
+
 class RendererImplemented : public Renderer, public Effekseer::ReferenceObject {
 private:
 	class StaticIndexBuffer : public Effekseer::Backend::IndexBuffer {
@@ -866,7 +874,8 @@ Texture::~Texture() {
 }
 
 // Create Renderer
-RendererRef Renderer::Create(struct InitArgs *init) {
+
+RendererRef CreateRenderer(struct InitArgs *init) {
 	auto renderer = Effekseer::MakeRefPtr<RendererImplemented>();
 	if (renderer->Initialize(init))	{
 		return renderer;
