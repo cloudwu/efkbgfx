@@ -114,7 +114,7 @@ public:
 		return Effekseer::MakeRefPtr<VertexLayout>(elements, elementCount);
 	}
 	// For ModelRenderer
-//	Effekseer::Backend::VertexBufferRef CreateVertexBuffer(int32_t size, const void* initialData, bool isDynamic) override;
+	Effekseer::Backend::VertexBufferRef CreateVertexBuffer(int32_t size, const void* initialData, bool isDynamic) override;
 	Effekseer::Backend::IndexBufferRef CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) override;
 
 	std::string GetDeviceName() const override {
@@ -141,14 +141,17 @@ private:
 	} m_uniform[maxUniform];
 	bgfx_uniform_handle_t m_texture[maxTexture];
 	bgfx_program_handle_t m_program;
-	class RendererImplemented *m_render;
+	RendererImplemented *m_render;
+	bgfx_vertex_layout_handle_t m_layout;
 public:
 	enum UniformType {
 		Vertex,
 		Pixel,
 		Texture,
 	};
-	Shader(class RendererImplemented * render) : m_render(render) {};
+	Shader(class RendererImplemented * render, bgfx_vertex_layout_handle_t layout)
+		: m_render(render)
+		, m_layout(layout) {};
 	~Shader() override {
 		delete[] m_vcbBuffer;
 		delete[] m_pcbBuffer;
@@ -178,15 +181,6 @@ public:
 		return m_render != nullptr;
 	}
 };
-
-//struct ShaderLoader {
-//	void *ud;
-//	bgfx_shader_handle_t (*loader)(const char *mat, const char *name, const char *type, void *ud);
-
-//	bgfx_shader_handle_t Load(const char *mat, const char *name, const char *type) const {
-//		return loader(mat, name, type, ud);
-//	}
-//};
 
 class RenderState : public EffekseerRenderer::RenderStateBase {
 private:
@@ -241,14 +235,34 @@ private:
 		const RendererImplemented * m_render;
 		bgfx_index_buffer_handle_t m_buffer;
 	public:
-		StaticIndexBuffer(const RendererImplemented *render, bgfx_index_buffer_handle_t buffer)
-			: m_render(render)
-			, m_buffer(buffer) {}
+		StaticIndexBuffer(
+			const RendererImplemented *render,
+			bgfx_index_buffer_handle_t buffer,
+			int stride,
+			int count ) : m_render(render) , m_buffer(buffer) {
+			strideType_ = stride == 4 ? Effekseer::Backend::IndexBufferStrideType::Stride4 : Effekseer::Backend::IndexBufferStrideType::Stride2;
+			elementCount_ = count;
+		}
 		virtual ~StaticIndexBuffer() override {
 			m_render->ReleaseIndexBuffer(this);
 		}
 		void UpdateData(const void* src, int32_t size, int32_t offset) override { assert(false); }	// Can't Update
 		bgfx_index_buffer_handle_t GetInterface() const { return m_buffer; }
+	};
+	// For ModelRenderer
+	class StaticVertexBuffer : public Effekseer::Backend::VertexBuffer {
+	private:
+		const RendererImplemented * m_render;
+		bgfx_vertex_buffer_handle_t m_buffer;
+	public:
+		StaticVertexBuffer(
+			const RendererImplemented *render,
+			bgfx_vertex_buffer_handle_t buffer ) : m_render(render) , m_buffer(buffer) {}
+		virtual ~StaticVertexBuffer() override {
+			m_render->ReleaseVertexBuffer(this);
+		}
+		void UpdateData(const void* src, int32_t size, int32_t offset) override { assert(false); }	// Can't Update
+		bgfx_vertex_buffer_handle_t GetInterface() const { return m_buffer; }
 	};
 
 	GraphicsDeviceRef m_device = nullptr;
@@ -259,13 +273,15 @@ private:
 	EffekseerRenderer::DistortingCallback* m_distortingCallback = nullptr;
 	StaticIndexBuffer* m_indexBuffer = nullptr;
 	StaticIndexBuffer* m_indexBufferForWireframe = nullptr;
+	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
 	TransientVertexBuffer* m_vertexBuffer = nullptr;
 	Shader* m_currentShader = nullptr;
 	int32_t m_squareMaxCount = 0;
 	int32_t m_indexBufferStride = 2;
 	bgfx_view_id_t m_viewid = 0;
-	bgfx_vertex_layout_handle_t m_layout[SHADERCOUNT];
 	bgfx_vertex_layout_t m_maxlayout;
+	bgfx_vertex_layout_t m_modellayout;
+	bgfx_vertex_layout_handle_t m_currentlayout;
 	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
 
@@ -281,7 +297,7 @@ private:
 	}
 	StaticIndexBuffer * CreateIndexBuffer(const bgfx_memory_t *mem, int stride) {
 		bgfx_index_buffer_handle_t handle = BGFX(create_index_buffer)(mem, stride == 4 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE);
-		return new StaticIndexBuffer(this, handle);
+		return new StaticIndexBuffer(this, handle, stride, mem->size / stride);
 	}
 	void InitIndexBuffer() {
 		int n = GetIndexSpriteCount();
@@ -337,6 +353,17 @@ private:
 		if (m_indexBufferForWireframe)
 			delete m_indexBufferForWireframe;
 		m_indexBufferForWireframe = CreateIndexBuffer(mem, m_indexBufferStride);
+	}
+	void InitVertexLayoutModel() {
+		bgfx_vertex_layout_t *layout = &m_modellayout;
+		BGFX(vertex_layout_begin)(layout, BGFX_RENDERER_TYPE_NOOP);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_POSITION, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_NORMAL, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_BITANGENT, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_TANGENT, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, false, false);
+			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
+		BGFX(vertex_layout_end)(layout);
 	}
 	void GenVertexLayout(bgfx_vertex_layout_t *layout, VertexLayoutRef v) const {
 		const auto &elements = v->GetElements();
@@ -409,7 +436,11 @@ private:
 		BGFX(vertex_layout_end)(layout);
 	}
 	void InitVertexBuffer() {
-		bgfx_vertex_layout_t layout[SHADERCOUNT];
+		m_vertexBuffer = new TransientVertexBuffer(m_squareMaxCount * m_maxlayout.stride);
+	}
+	bool InitShaders(struct InitArgs *init) {
+		m_initArgs = *init;
+		m_maxlayout.stride = 0;
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
 			EffekseerRenderer::RendererShaderType::Lit,
@@ -418,38 +449,41 @@ private:
 			EffekseerRenderer::RendererShaderType::AdvancedLit,
 			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 		}) {
-			int id = (int)t;
-			GenVertexLayout(&layout[id], EffekseerRenderer::GetVertexLayout(m_device, t).DownCast<VertexLayout>());
-		}
-		int maxstride = 0;
-		int maxstride_id = 0;
-		for (int i=0;i<SHADERCOUNT;i++) {
-			m_layout[i] = BGFX(create_vertex_layout)(&layout[i]);
-			if (layout[i].stride > maxstride) {
-				maxstride = layout[i].stride;
-				maxstride_id = i;
+			bgfx_vertex_layout_t layout;
+			GenVertexLayout(&layout, EffekseerRenderer::GetVertexLayout(m_device, t).DownCast<VertexLayout>());
+			if (layout.stride > m_maxlayout.stride) {
+				m_maxlayout = layout;
 			}
-		}
-		m_maxlayout = layout[maxstride_id];
-		m_vertexBuffer = new TransientVertexBuffer(m_squareMaxCount * maxstride);
-	}
-	bool InitShaders(struct InitArgs *init) {
-		m_initArgs = *init;
-		static const char *shadername[SHADERCOUNT] = {
-			"sprite_unlit",
-			"sprite_lit",
-			"sprite_distortion",
-			"sprite_adv_unlit",
-			"sprite_adv_lit",
-			"sprite_adv_distortion",
-		};
-		int i;
-		for (i=0;i<SHADERCOUNT;i++) {
-			Shader * s = new Shader(this);
-			m_shaders[i] = s;
+			Shader * s = new Shader(this, BGFX(create_vertex_layout)(&layout));
+			int id = (int)t;
+			m_shaders[id] = s;
+			const char *shadername = NULL;
+			switch (t) {
+			case EffekseerRenderer::RendererShaderType::Unlit :
+				shadername = "sprite_unlit";
+				break;
+			case EffekseerRenderer::RendererShaderType::Lit :
+				shadername = "sprite_lit";
+				break;
+			case EffekseerRenderer::RendererShaderType::BackDistortion :
+				shadername = "sprite_distortion";
+				break;
+			case EffekseerRenderer::RendererShaderType::AdvancedUnlit :
+				shadername = "sprite_adv_unlit";
+				break;
+			case EffekseerRenderer::RendererShaderType::AdvancedLit :
+				shadername = "sprite_adv_lit";
+				break;
+			case EffekseerRenderer::RendererShaderType::AdvancedBackDistortion :
+				shadername = "sprite_adv_distortion";
+				break;
+			default:
+				assert(false);
+				break;
+			}
 			InitShader(s,
-				LoadShader(NULL, shadername[i], "vs"),
-				LoadShader(NULL, shadername[i], "fs"));
+				LoadShader(NULL, shadername, "vs"),
+				LoadShader(NULL, shadername, "fs"));
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
 			AddUniform(s, "u_UVInversed", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, uvInversed));
@@ -457,7 +491,7 @@ private:
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
 			AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
 		}
-		for (i=0;i<SHADERCOUNT;i++) {
+		for (int i=0;i<SHADERCOUNT;i++) {
 			Shader * s = m_shaders[i];
 			if (!s->isValid())
 				return false;
@@ -508,9 +542,7 @@ public:
 	RendererImplemented() {
 		m_device = Effekseer::MakeRefPtr<GraphicsDevice>(this);
 		int i;
-		for (i=0;i<SHADERCOUNT;i++) {
-			m_layout[i].idx = UINT16_MAX;
-		}
+		m_currentlayout.idx = UINT16_MAX;
 		for (i=0;i<SHADERCOUNT;i++) {
 			m_shaders[i] = nullptr;
 		}
@@ -525,10 +557,6 @@ public:
 			ReleaseShader(shader);
 			ES_SAFE_DELETE(shader);
 		}
-		int i;
-		for (i=0;i<SHADERCOUNT;i++) {
-			BGFX(destroy_vertex_layout)(m_layout[i]);
-		}
 		ES_SAFE_DELETE(m_indexBuffer);
 		ES_SAFE_DELETE(m_indexBufferForWireframe);
 		ES_SAFE_DELETE(m_vertexBuffer);
@@ -542,6 +570,7 @@ public:
 		if (!InitShaders(init)) {
 			return false;
 		}
+		InitVertexLayoutModel();
 		m_viewid = init->viewid;
 		m_squareMaxCount = init->squareMaxCount;
 		if (GetIndexSpriteCount() * 4 > 65536) {
@@ -633,25 +662,25 @@ public:
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader>* GetStandardRenderer() {
 		return m_standardRenderer;
 	}
-	void SetVertexBuffer(TransientVertexBuffer* vertexBuffer, int32_t stride) {
-		auto shaderType = m_standardRenderer->GetState().Collector.ShaderType;
-		int id = (int)shaderType;
-		if (shaderType == EffekseerRenderer::RendererShaderType::Material) {
-			// todo : materaial
-			return;
-		}
-		BGFX(set_transient_vertex_buffer_with_layout)(0, vertexBuffer->GetInterface(), 0, vertexBuffer->GetSize()/stride, m_layout[id]);
+	// Only one transient vb, set in DrawSprites() with layout
+	void SetVertexBuffer(TransientVertexBuffer* vertexBuffer, int32_t stride) {}
+	// For ModelRenderer, See ModelRendererBase
+	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
+		(void)stride;
+		m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {
-		// todo:
+		m_currentlayout = shader->m_layout;
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
-		// todo:
+		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
+		// todo: submit
 	}
 	void DrawPolygon(int32_t vertexCount, int32_t indexCount) {
+		BGFX(set_vertex_buffer_with_layout)(0, m_currentVertexBuffer, 0, 1, m_currentlayout);
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
@@ -728,6 +757,8 @@ public:
 		}
 	}
 	void ReleaseShader(Shader *s) {
+		BGFX(destroy_vertex_layout)(s->m_layout);
+		s->m_layout.idx = UINT16_MAX;
 		if (s->isValid()) {
 			BGFX(destroy_program)(s->m_program);
 			s->m_render = nullptr;
@@ -815,11 +846,18 @@ public:
 		const bgfx_memory_t *mem = BGFX(copy)(initialData, elementCount * s);
 		bgfx_index_buffer_handle_t handle = BGFX(create_index_buffer)(mem, s == 4 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE);
 
-		return Effekseer::MakeRefPtr<StaticIndexBuffer>(this, handle);
+		return Effekseer::MakeRefPtr<StaticIndexBuffer>(this, handle, s, elementCount);
 	}
-
+	Effekseer::Backend::VertexBufferRef CreateVertexBuffer(int32_t size, const void* initialData) const {
+		const bgfx_memory_t *mem = BGFX(copy)(initialData, size);
+		bgfx_vertex_buffer_handle_t handle = BGFX(create_vertex_buffer)(mem, &m_modellayout, BGFX_BUFFER_NONE);
+		return  Effekseer::MakeRefPtr<StaticVertexBuffer>(this, handle);
+	}
 	void ReleaseIndexBuffer(StaticIndexBuffer *ib) const {
 		BGFX(destroy_index_buffer)(ib->GetInterface());
+	}
+	void ReleaseVertexBuffer(StaticVertexBuffer *vb) const {
+		BGFX(destroy_vertex_buffer)(vb->GetInterface());
 	}
 private:
 //	void DoDraw();
@@ -884,6 +922,11 @@ Effekseer::Backend::TextureRef GraphicsDevice::CreateTexture(const Effekseer::Ba
 
 Effekseer::Backend::IndexBufferRef GraphicsDevice::CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) {
 	return m_render->CreateIndexBuffer(elementCount, initialData, stride);
+}
+
+Effekseer::Backend::VertexBufferRef GraphicsDevice::CreateVertexBuffer(int32_t size, const void* initialData, bool isDynamic) {
+	assert(isDynamic == false);	// ModelRenderer use Static VB
+	return m_render->CreateVertexBuffer(size, initialData);
 }
 
 Texture::~Texture() {
