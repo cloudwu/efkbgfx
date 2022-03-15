@@ -15,10 +15,7 @@ namespace EffekseerRendererBGFX {
 		void * ud;
 	};
 
-	class Renderer;
-	using RendererRef = Effekseer::RefPtr<Renderer>;
-
-	RendererRef CreateRenderer(struct InitArgs *init);
+	EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init);
 }
 
 #endif

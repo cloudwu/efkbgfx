@@ -892,7 +892,7 @@ Texture::~Texture() {
 
 // Create Renderer
 
-RendererRef CreateRenderer(struct InitArgs *init) {
+EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init) {
 	auto renderer = Effekseer::MakeRefPtr<RendererImplemented>();
 	if (renderer->Initialize(init))	{
 		return renderer;
