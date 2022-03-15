@@ -10,6 +10,8 @@
 #include <EffekseerRendererCommon/EffekseerRenderer.RingRendererBase.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.SpriteRendererBase.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.TrackRendererBase.h>
+#include <EffekseerRendererCommon/EffekseerRenderer.ModelRendererBase.h>
+#include <EffekseerRendererCommon/ModelLoader.h>
 #include "bgfxrenderer.h"
 
 #define BGFX(api) m_bgfx->api
@@ -122,66 +124,6 @@ public:
 	}
 };
 
-// Shader
-class Shader : public EffekseerRenderer::ShaderBase {
-	friend class RendererImplemented;
-private:
-	static const int maxUniform = 64;
-	static const int maxTexture = 8;
-	int m_vcbSize = 0;
-	int m_pcbSize = 0;
-	int m_vsSize = 0;
-	int m_fsSize = 0;
-	uint8_t * m_vcbBuffer = nullptr;
-	uint8_t * m_pcbBuffer = nullptr;
-	struct {
-		bgfx_uniform_handle_t handle;
-		int count;
-		void * ptr;
-	} m_uniform[maxUniform];
-	bgfx_uniform_handle_t m_texture[maxTexture];
-	bgfx_program_handle_t m_program;
-	RendererImplemented *m_render;
-	bgfx_vertex_layout_handle_t m_layout;
-public:
-	enum UniformType {
-		Vertex,
-		Pixel,
-		Texture,
-	};
-	Shader(class RendererImplemented * render, bgfx_vertex_layout_handle_t layout)
-		: m_render(render)
-		, m_layout(layout) {};
-	~Shader() override {
-		delete[] m_vcbBuffer;
-		delete[] m_pcbBuffer;
-	}
-	virtual void SetVertexConstantBufferSize(int32_t size) override {
-		if (size > 0) {
-			assert(m_vcbSize == 0);
-			m_vcbSize = size;
-			m_vcbBuffer = new uint8_t[size];
-		}
-	}
-	virtual void SetPixelConstantBufferSize(int32_t size) override {
-		if (size > 0) {
-			assert(m_pcbSize == 0);
-			m_pcbSize = size;
-			m_pcbBuffer = new uint8_t[size];
-		}
-	}
-	virtual void* GetVertexConstantBuffer() override {
-		return m_vcbBuffer;
-	}
-	virtual void* GetPixelConstantBuffer() override {
-		return m_pcbBuffer;
-	}
-	virtual void SetConstantBuffer() override;
-	bool isValid() const {
-		return m_render != nullptr;
-	}
-};
-
 class RenderState : public EffekseerRenderer::RenderStateBase {
 private:
 	RendererImplemented* m_renderer;
@@ -230,6 +172,68 @@ public:
 
 class RendererImplemented : public Renderer, public Effekseer::ReferenceObject {
 private:
+	// Shader
+	class Shader : public EffekseerRenderer::ShaderBase {
+		friend class RendererImplemented;
+	private:
+		static const int maxUniform = 64;
+		static const int maxTexture = 8;
+		int m_vcbSize = 0;
+		int m_pcbSize = 0;
+		int m_vsSize = 0;
+		int m_fsSize = 0;
+		uint8_t * m_vcbBuffer = nullptr;
+		uint8_t * m_pcbBuffer = nullptr;
+		struct {
+			bgfx_uniform_handle_t handle;
+			int count;
+			void * ptr;
+		} m_uniform[maxUniform];
+		bgfx_uniform_handle_t m_texture[maxTexture];
+		bgfx_program_handle_t m_program;
+		const RendererImplemented *m_render;
+		bgfx_vertex_layout_handle_t m_layout;
+	public:
+		enum UniformType {
+			Vertex,
+			Pixel,
+			Texture,
+		};
+		Shader(const RendererImplemented * render, bgfx_vertex_layout_handle_t layout)
+			: m_render(render)
+			, m_layout(layout) {};
+		~Shader() override {
+			delete[] m_vcbBuffer;
+			delete[] m_pcbBuffer;
+			m_render->ReleaseShader(this);
+		}
+		virtual void SetVertexConstantBufferSize(int32_t size) override {
+			if (size > 0) {
+				assert(m_vcbSize == 0);
+				m_vcbSize = size;
+				m_vcbBuffer = new uint8_t[size];
+			}
+		}
+		virtual void SetPixelConstantBufferSize(int32_t size) override {
+			if (size > 0) {
+				assert(m_pcbSize == 0);
+				m_pcbSize = size;
+				m_pcbBuffer = new uint8_t[size];
+			}
+		}
+		virtual void* GetVertexConstantBuffer() override {
+			return m_vcbBuffer;
+		}
+		virtual void* GetPixelConstantBuffer() override {
+			return m_pcbBuffer;
+		}
+		virtual void SetConstantBuffer() override {
+			m_render->SumbitUniforms(this);
+		}
+		bool isValid() const {
+			return m_render != nullptr;
+		}
+	};
 	class StaticIndexBuffer : public Effekseer::Backend::IndexBuffer {
 	private:
 		const RendererImplemented * m_render;
@@ -264,7 +268,145 @@ private:
 		void UpdateData(const void* src, int32_t size, int32_t offset) override { assert(false); }	// Can't Update
 		bgfx_vertex_buffer_handle_t GetInterface() const { return m_buffer; }
 	};
+	class ModelRenderer : public EffekseerRenderer::ModelRendererBase {
+	private:
+		static const int32_t MaxInstanced = 20;
+		RendererImplemented* m_render;
+		Shader * m_shaders[SHADERCOUNT];
+	public:
+		ModelRenderer(RendererImplemented* renderer) : m_render(renderer) {
+			int i;
+			for (i=0;i<SHADERCOUNT;i++) {
+				m_shaders[i] = nullptr;
+			}
+		}
+		virtual ~ModelRenderer() override {
+			for (auto shader : m_shaders) {
+				ES_SAFE_DELETE(shader);
+			}
+		}
+		bool Initialize(struct InitArgs *init) {
+			for (auto t : {
+				EffekseerRenderer::RendererShaderType::Unlit,
+				EffekseerRenderer::RendererShaderType::Lit,
+				EffekseerRenderer::RendererShaderType::BackDistortion,
+				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				EffekseerRenderer::RendererShaderType::AdvancedLit,
+				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+			}) {
+				bgfx_vertex_layout_t layout;
+				m_render->GenVertexLayout(&layout, t);
+				Shader * s = m_render->CreateShader(&layout);
+				int id = (int)t;
+				m_shaders[id] = s;
+				const char *shadername = NULL;
+				switch (t) {
+				case EffekseerRenderer::RendererShaderType::Unlit :
+					shadername = "model_unlit";
+					break;
+				case EffekseerRenderer::RendererShaderType::Lit :
+					shadername = "model_lit";
+					break;
+				case EffekseerRenderer::RendererShaderType::BackDistortion :
+					shadername = "model_distortion";
+					break;
+				case EffekseerRenderer::RendererShaderType::AdvancedUnlit :
+					shadername = "model_adv_unlit";
+					break;
+				case EffekseerRenderer::RendererShaderType::AdvancedLit :
+					shadername = "model_adv_lit";
+					break;
+				case EffekseerRenderer::RendererShaderType::AdvancedBackDistortion :
+					shadername = "model_adv_distortion";
+					break;
+				default:
+					assert(false);
+					break;
+				}
+				m_render->InitShader(s,
+					m_render->LoadShader(NULL, shadername, "vs"),
+					m_render->LoadShader(NULL, shadername, "fs"));
+			}
+			for (int i=0;i<SHADERCOUNT;i++) {
+				Shader * s = m_shaders[i];
+				if (!s->isValid())
+					return false;
+			}
+			for (auto t : {
+				EffekseerRenderer::RendererShaderType::Unlit,
+				EffekseerRenderer::RendererShaderType::Lit,
+				EffekseerRenderer::RendererShaderType::BackDistortion,
+			}) {
+				Shader * s = m_shaders[(int)t];
+				typedef EffekseerRenderer::ModelRendererVertexConstantBuffer<MaxInstanced> VCB;
+				s->SetVertexConstantBufferSize(sizeof(VCB));
+#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+					VUNIFORM("u_Camera", CameraMatrix)
+					VUNIFORM("u_Model", ModelMatrix)
+					VUNIFORM("u_ModelUV", ModelUV)
+					VUNIFORM("u_ModelColor", ModelColor)
+					VUNIFORM("u_LightDirection", LightDirection)
+					VUNIFORM("u_LightColor", LightColor)
+					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
+					VUNIFORM("u_UVInversed", UVInversed)
+#undef VUNIFORM
+			}
+			for (auto t : {
+				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				EffekseerRenderer::RendererShaderType::AdvancedLit,
+				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+			}) {
+				Shader * s = m_shaders[(int)t];
+				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
+				s->SetVertexConstantBufferSize(sizeof(VCB));
+#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+					VUNIFORM("u_Camera", CameraMatrix)
+					VUNIFORM("u_Model", ModelMatrix)
+					VUNIFORM("u_ModelUV", ModelUV)
+					VUNIFORM("u_ModelAlphaUV", ModelAlphaUV)
+					VUNIFORM("u_ModelUVDistortionUV", ModelUVDistortionUV)
+					VUNIFORM("u_ModelBlendUV", ModelBlendUV)
+					VUNIFORM("u_ModelBlendAlphaUV", ModelBlendAlphaUV)
+					VUNIFORM("u_ModelBlendUVDistortionUV", ModelBlendUVDistortionUV)
+					VUNIFORM("u_ModelFlipbookParameter", ModelFlipbookParameter)
+					VUNIFORM("u_ModelFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
+					VUNIFORM("u_ModelAlphaThreshold", ModelAlphaThreshold)
+					VUNIFORM("u_ModelColor", ModelColor)
+					VUNIFORM("u_LightDirection", LightDirection)
+					VUNIFORM("u_LightColor", LightColor)
+					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
+					VUNIFORM("u_UVInversed", UVInversed)
+#undef VUNIFORM
+			}
+			m_render->SetPixelConstantBuffer(m_shaders);
+			return true;
+		}
+		void BeginRendering(const Effekseer::ModelRenderer::NodeParameter& parameter, int32_t count, void* userData) override {
+			BeginRendering_(m_render, parameter, count, userData);
+		}
+		virtual void Rendering(const Effekseer::ModelRenderer::NodeParameter& parameter, const Effekseer::ModelRenderer::InstanceParameter& instanceParameter, void* userData) override {
+			Rendering_<RendererImplemented>(m_render, parameter, instanceParameter, userData);
+		}
+		void EndRendering(const Effekseer::ModelRenderer::NodeParameter& parameter, void* userData) override {
+			Effekseer::ModelRef model = nullptr;
 
+			if (parameter.IsProceduralMode)
+				model = parameter.EffectPointer->GetProceduralModel(parameter.ModelIndex);
+			else
+				model = parameter.EffectPointer->GetModel(parameter.ModelIndex);
+			if (!m_render->StoreModelToGPU(model)) {
+				return;
+			}
+			Shader * shader_ad_lit_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedLit];
+			Shader * shader_ad_unlit_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedUnlit];
+			Shader * shader_ad_distortion_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedBackDistortion];
+			Shader * shader_lit_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::Lit];
+			Shader * shader_unlit_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::Unlit];
+			Shader * shader_distortion_ = m_shaders[(int)EffekseerRenderer::RendererShaderType::BackDistortion];
+			EndRendering_<RendererImplemented, Shader, Effekseer::Model, true, MaxInstanced>(
+				m_render, shader_ad_lit_, shader_ad_unlit_, shader_ad_distortion_, shader_lit_, shader_unlit_, shader_distortion_, parameter, userData);
+		}
+	};
 	GraphicsDeviceRef m_device = nullptr;
 	bgfx_interface_vtbl_t * m_bgfx = nullptr;
 	EffekseerRenderer::RenderStateBase* m_renderState = nullptr;
@@ -365,7 +507,8 @@ private:
 			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
 		BGFX(vertex_layout_end)(layout);
 	}
-	void GenVertexLayout(bgfx_vertex_layout_t *layout, VertexLayoutRef v) const {
+	void GenVertexLayout(bgfx_vertex_layout_t *layout, EffekseerRenderer::RendererShaderType t) const {
+		VertexLayoutRef v = EffekseerRenderer::GetVertexLayout(m_device, t).DownCast<VertexLayout>();
 		const auto &elements = v->GetElements();
 		BGFX(vertex_layout_begin)(layout, BGFX_RENDERER_TYPE_NOOP);
 		for (int i = 0; i < elements.size(); i++) {
@@ -438,6 +581,48 @@ private:
 	void InitVertexBuffer() {
 		m_vertexBuffer = new TransientVertexBuffer(m_squareMaxCount * m_maxlayout.stride);
 	}
+	void SetPixelConstantBuffer(Shader *shaders[]) const {
+		for (auto t: {
+			EffekseerRenderer::RendererShaderType::Unlit,
+			EffekseerRenderer::RendererShaderType::Lit,
+			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			EffekseerRenderer::RendererShaderType::AdvancedLit,
+		}) {
+			int id = (int)t;
+			Shader * s = shaders[id];
+			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBuffer));
+#define PIXELUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, name));
+			PIXELUNIFORM(LightDirection)
+			PIXELUNIFORM(LightColor)
+			PIXELUNIFORM(LightAmbientColor)
+			PIXELUNIFORM(FlipbookParam)
+			PIXELUNIFORM(UVDistortionParam)
+			PIXELUNIFORM(BlendTextureParam)
+			PIXELUNIFORM(CameraFrontDirection)
+			PIXELUNIFORM(FalloffParam)
+			PIXELUNIFORM(EmmisiveParam)
+			PIXELUNIFORM(EdgeParam)
+			PIXELUNIFORM(SoftParticleParam)
+			PIXELUNIFORM(UVInversedBack)
+			PIXELUNIFORM(MiscFlags)
+#undef PIXELUNIFORM
+		}
+		for (auto t: {
+			EffekseerRenderer::RendererShaderType::BackDistortion,
+			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+		}) {
+			int id = (int)t;
+			Shader * s = shaders[id];
+			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
+#define PIXELDUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, name));
+			PIXELDUNIFORM(DistortionIntencity)
+			PIXELDUNIFORM(UVInversedBack)
+			PIXELDUNIFORM(FlipbookParam)
+			PIXELDUNIFORM(BlendTextureParam)
+			PIXELDUNIFORM(SoftParticleParam)
+#undef PIXELDUNIFORM
+		}
+	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
 		m_maxlayout.stride = 0;
@@ -450,7 +635,7 @@ private:
 			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 		}) {
 			bgfx_vertex_layout_t layout;
-			GenVertexLayout(&layout, EffekseerRenderer::GetVertexLayout(m_device, t).DownCast<VertexLayout>());
+			GenVertexLayout(&layout, t);
 			if (layout.stride > m_maxlayout.stride) {
 				m_maxlayout = layout;
 			}
@@ -485,6 +670,10 @@ private:
 				LoadShader(NULL, shadername, "vs"),
 				LoadShader(NULL, shadername, "fs"));
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
+			AddUniform(s, "u_Camera", Shader::UniformType::Vertex,
+				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[0]));
+			AddUniform(s, "u_CameraProj", Shader::UniformType::Vertex,
+				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[1]));
 			AddUniform(s, "u_UVInversed", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, uvInversed));
 			AddUniform(s, "u_vsFlipbookParameter", Shader::UniformType::Vertex,
@@ -496,46 +685,7 @@ private:
 			if (!s->isValid())
 				return false;
 		}
-		for (auto t: {
-			EffekseerRenderer::RendererShaderType::Unlit,
-			EffekseerRenderer::RendererShaderType::Lit,
-			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-			EffekseerRenderer::RendererShaderType::AdvancedLit,
-		}) {
-			int id = (int)t;
-			Shader * s = m_shaders[id];
-			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBuffer));
-#define PIXELUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, name));
-			PIXELUNIFORM(LightDirection)
-			PIXELUNIFORM(LightColor)
-			PIXELUNIFORM(LightAmbientColor)
-			PIXELUNIFORM(FlipbookParam)
-			PIXELUNIFORM(UVDistortionParam)
-			PIXELUNIFORM(BlendTextureParam)
-			PIXELUNIFORM(CameraFrontDirection)
-			PIXELUNIFORM(FalloffParam)
-			PIXELUNIFORM(EmmisiveParam)
-			PIXELUNIFORM(EdgeParam)
-			PIXELUNIFORM(SoftParticleParam)
-			PIXELUNIFORM(UVInversedBack)
-			PIXELUNIFORM(MiscFlags)
-#undef PIXELUNIFORM
-		}
-		for (auto t: {
-			EffekseerRenderer::RendererShaderType::BackDistortion,
-			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
-		}) {
-			int id = (int)t;
-			Shader * s = m_shaders[id];
-			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
-#define PIXELDUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, name));
-			PIXELDUNIFORM(DistortionIntencity)
-			PIXELDUNIFORM(UVInversedBack)
-			PIXELDUNIFORM(FlipbookParam)
-			PIXELDUNIFORM(BlendTextureParam)
-			PIXELDUNIFORM(SoftParticleParam)
-#undef PIXELDUNIFORM
-		}
+		SetPixelConstantBuffer(m_shaders);
 		return true;
 	}
 public:
@@ -554,7 +704,6 @@ public:
 		ES_SAFE_DELETE(m_standardRenderer);
 		ES_SAFE_DELETE(m_renderState);
 		for (auto shader : m_shaders) {
-			ReleaseShader(shader);
 			ES_SAFE_DELETE(shader);
 		}
 		ES_SAFE_DELETE(m_indexBuffer);
@@ -635,8 +784,7 @@ public:
 		return Effekseer::RingRendererRef(new EffekseerRenderer::RingRendererBase<RendererImplemented, false>(this));
 	}
 	Effekseer::ModelRendererRef CreateModelRenderer() override {
-		// todo: return ModelRenderer::Create(this);
-		return nullptr;
+		return Effekseer::MakeRefPtr<ModelRenderer>(this);
 	}
 	Effekseer::TrackRendererRef CreateTrackRenderer() override {
 		return Effekseer::TrackRendererRef(new EffekseerRenderer::TrackRendererBase<RendererImplemented, false>(this));
@@ -645,8 +793,8 @@ public:
 		return Effekseer::MakeRefPtr<TextureLoader>(this, &m_initArgs);
 	}
 	Effekseer::ModelLoaderRef CreateModelLoader(::Effekseer::FileInterfaceRef fileInterface = nullptr) {
-		// todo: return Effekseer::MakeRefPtr<ModelLoader>(m_device, fileInterface);
-		return nullptr;
+		// todo: add our model loader (model loader callback in InitArgs)
+		return Effekseer::MakeRefPtr<EffekseerRenderer::ModelLoader>(m_device, fileInterface);
 	}
 	Effekseer::MaterialLoaderRef CreateMaterialLoader(::Effekseer::FileInterfaceRef fileInterface = nullptr) {
 		// todo: return Effekseer::MakeRefPtr<MaterialLoader>(m_device, fileInterface);
@@ -671,6 +819,10 @@ public:
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
+	}
+	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) const {
+		bgfx_index_buffer_handle_t ib = indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface();
+		BGFX(set_index_buffer)(ib, 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {
 		m_currentlayout = shader->m_layout;
@@ -730,9 +882,11 @@ public:
 	bgfx_shader_handle_t LoadShader(const char *mat, const char *name, const char *type) const {
 		return m_initArgs.shader_load(mat, name, type, m_initArgs.ud);
 	}
-
+	Shader * CreateShader(const bgfx_vertex_layout_t *layout) const {
+		return new Shader(this, BGFX(create_vertex_layout)(layout));
+	}
 	// Shader API
-	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) {
+	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;
@@ -756,7 +910,7 @@ public:
 			s->m_texture[i].idx = UINT16_MAX;
 		}
 	}
-	void ReleaseShader(Shader *s) {
+	void ReleaseShader(Shader *s) const {
 		BGFX(destroy_vertex_layout)(s->m_layout);
 		s->m_layout.idx = UINT16_MAX;
 		if (s->isValid()) {
@@ -764,10 +918,9 @@ public:
 			s->m_render = nullptr;
 		}
 	}
-	void SumbitUniforms(Shader *s) {
+	void SumbitUniforms(Shader *s) const {
 		if (!s->isValid())
 			return;
-		BGFX(set_view_transform)(m_viewid, s->m_vcbBuffer, s->m_vcbBuffer + sizeof(Effekseer::Matrix44));
 		int i;
 		for (i=0;i<s->m_vsSize + s->m_fsSize;i++) {
 			if (s->m_uniform[i].ptr != nullptr) {
@@ -775,7 +928,7 @@ public:
 			}
 		}
 	}
-	void AddUniform(Shader *s, const char *name, Shader::UniformType type, int offset) {
+	void AddUniform(Shader *s, const char *name, Shader::UniformType type, int offset) const {
 		if (!s->isValid())
 			return;
 		int i;
@@ -859,13 +1012,17 @@ public:
 	void ReleaseVertexBuffer(StaticVertexBuffer *vb) const {
 		BGFX(destroy_vertex_buffer)(vb->GetInterface());
 	}
+	bool StoreModelToGPU(Effekseer::ModelRef model) const {
+		if (model == nullptr)
+			return false;
+		model->StoreBufferToGPU(m_device.Get());
+		if (!model->GetIsBufferStoredOnGPU())
+			return false;
+		return true;
+	}
 private:
 //	void DoDraw();
 };
-
-void Shader::SetConstantBuffer() {
-	m_render->SumbitUniforms(this);
-}
 
 void RenderState::Update(bool forced) {
 	(void)forced;	// ignore forced
