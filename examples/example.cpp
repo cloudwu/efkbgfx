@@ -55,6 +55,7 @@ public:
 
 		m_efkRenderer = EffekseerRendererBGFX::CreateRenderer(&efkArgs);
 		m_efkManager = Effekseer::Manager::Create(8000);
+		m_efkManager->GetSetting()->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
 		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
 		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
@@ -67,12 +68,10 @@ public:
 		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());
 		m_efkManager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());
 
-		// float proj[16];
-		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
 		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
 			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
 		m_efkRenderer->SetCameraMatrix(
-		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, 20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
+		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
 		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
 
@@ -108,15 +107,11 @@ public:
 
 			static int s_time = 0;
 			static Effekseer::Handle s_handle = 0;
-			if (s_time == 0){
-				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
-			} else {
-				++s_time;
-			}
 
-			if (s_time == 119){
+			if (s_time % 120 == 0){
+				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+			} else if (s_time % 120 == 119){
 				m_efkManager->StopEffect(s_handle);
-				s_time = 0;
 			}
 
 			m_efkManager->AddLocation(s_handle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
@@ -134,6 +129,7 @@ public:
 			m_efkRenderer->EndRendering();
 			bgfx::frame();
 
+			++s_time;
 			return true;
 		}
 
