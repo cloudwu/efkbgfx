@@ -415,7 +415,6 @@ private:
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader>* m_standardRenderer = nullptr;
 	EffekseerRenderer::DistortingCallback* m_distortingCallback = nullptr;
 	StaticIndexBuffer* m_indexBuffer = nullptr;
-	StaticIndexBuffer* m_indexBufferForWireframe = nullptr;
 	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
 	TransientVertexBuffer* m_vertexBuffer = nullptr;
 	Shader* m_currentShader = nullptr;
@@ -469,33 +468,6 @@ private:
 			delete m_indexBuffer;
 
 		m_indexBuffer = CreateIndexBuffer(mem, m_indexBufferStride);
-
-		mem = BGFX(alloc)(n * 8 * m_indexBufferStride);
-		ptr = mem->data;
-
-		for (i=0;i<n;i++) {
-			int buf[8] = {
-				0 + 4 * i,
-				1 + 4 * i,
-				2 + 4 * i,
-				3 + 4 * i,
-				0 + 4 * i,
-				2 + 4 * i,
-				1 + 4 * i,
-				3 + 4 * i,
-			};
-			if (m_indexBufferStride == 2) {
-				uint16_t * dst = (uint16_t *)ptr;
-				for (j=0;j<8;j++)
-					dst[j] = (uint16_t)buf[j];
-			} else {
-				memcpy(ptr, buf, sizeof(buf));
-			}
-			ptr += 8 * m_indexBufferStride;
-		}
-		if (m_indexBufferForWireframe)
-			delete m_indexBufferForWireframe;
-		m_indexBufferForWireframe = CreateIndexBuffer(mem, m_indexBufferStride);
 	}
 	void InitVertexLayoutModel() {
 		bgfx_vertex_layout_t *layout = &m_modellayout;
@@ -585,9 +557,9 @@ private:
 	void SetPixelConstantBuffer(Shader *shaders[]) const {
 		for (auto t: {
 			EffekseerRenderer::RendererShaderType::Unlit,
-			EffekseerRenderer::RendererShaderType::Lit,
-			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-			EffekseerRenderer::RendererShaderType::AdvancedLit,
+			// EffekseerRenderer::RendererShaderType::Lit,
+			// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			// EffekseerRenderer::RendererShaderType::AdvancedLit,
 		}) {
 			int id = (int)t;
 			Shader * s = shaders[id];
@@ -608,32 +580,32 @@ private:
 			PUNIFORM(MiscFlags)
 #undef PUNIFORM
 		}
-		for (auto t: {
-			EffekseerRenderer::RendererShaderType::BackDistortion,
-			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
-		}) {
-			int id = (int)t;
-			Shader * s = shaders[id];
-			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
-#define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
-			PUNIFORM(DistortionIntencity)
-			PUNIFORM(UVInversedBack)
-			PUNIFORM(FlipbookParam)
-			PUNIFORM(BlendTextureParam)
-			PUNIFORM(SoftParticleParam)
-#undef PUNIFORM
-		}
+// 		for (auto t: {
+// 			EffekseerRenderer::RendererShaderType::BackDistortion,
+// 			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+// 		}) {
+// 			int id = (int)t;
+// 			Shader * s = shaders[id];
+// 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
+// #define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
+// 			PUNIFORM(DistortionIntencity)
+// 			PUNIFORM(UVInversedBack)
+// 			PUNIFORM(FlipbookParam)
+// 			PUNIFORM(BlendTextureParam)
+// 			PUNIFORM(SoftParticleParam)
+// #undef PUNIFORM
+// 		}
 	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
 		m_maxlayout.stride = 0;
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
-			EffekseerRenderer::RendererShaderType::Lit,
-			EffekseerRenderer::RendererShaderType::BackDistortion,
-			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-			EffekseerRenderer::RendererShaderType::AdvancedLit,
-			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+			// EffekseerRenderer::RendererShaderType::Lit,
+			// EffekseerRenderer::RendererShaderType::BackDistortion,
+			// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			// EffekseerRenderer::RendererShaderType::AdvancedLit,
+			// EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 		}) {
 			bgfx_vertex_layout_t layout;
 			GenVertexLayout(&layout, t);
@@ -708,7 +680,6 @@ public:
 			ES_SAFE_DELETE(shader);
 		}
 		ES_SAFE_DELETE(m_indexBuffer);
-		ES_SAFE_DELETE(m_indexBufferForWireframe);
 		ES_SAFE_DELETE(m_vertexBuffer);
 	}
 
@@ -819,7 +790,8 @@ public:
 		m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
-		BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
+		assert(indexBuffer == m_indexBuffer);
+		//BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) const {
 		bgfx_index_buffer_handle_t ib = indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface();
@@ -830,13 +802,14 @@ public:
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
 		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
-
-		// todo: submit
+		const uint32_t indexCount = spriteCount * 6;
+		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
 		BGFX(submit)({m_viewid}, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	void DrawPolygon(int32_t vertexCount, int32_t indexCount) {
-		BGFX(set_vertex_buffer_with_layout)(0, m_currentVertexBuffer, 0, 1, m_currentlayout);
-		assert(false);
+		BGFX(set_vertex_buffer_with_layout)(0, m_currentVertexBuffer, 0, vertexCount, m_currentlayout);
+		//BGFX(set_index_buffer)();
+		BGFX(submit)({m_viewid}, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
