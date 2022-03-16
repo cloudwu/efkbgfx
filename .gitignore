@@ -2,3 +2,5 @@ build
 bin
 *.code-workspace
 .vscode
+examples/shaders/*.bin
+examples/shaders/*.hlsl

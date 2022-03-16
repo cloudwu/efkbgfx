@@ -205,7 +205,8 @@ private:
 		~Shader() override {
 			delete[] m_vcbBuffer;
 			delete[] m_pcbBuffer;
-			m_render->ReleaseShader(this);
+			if (m_render)
+				m_render->ReleaseShader(this);
 		}
 		virtual void SetVertexConstantBufferSize(int32_t size) override {
 			if (size > 0) {
@@ -591,21 +592,21 @@ private:
 			int id = (int)t;
 			Shader * s = shaders[id];
 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBuffer));
-#define PIXELUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, name));
-			PIXELUNIFORM(LightDirection)
-			PIXELUNIFORM(LightColor)
-			PIXELUNIFORM(LightAmbientColor)
-			PIXELUNIFORM(FlipbookParam)
-			PIXELUNIFORM(UVDistortionParam)
-			PIXELUNIFORM(BlendTextureParam)
-			PIXELUNIFORM(CameraFrontDirection)
-			PIXELUNIFORM(FalloffParam)
-			PIXELUNIFORM(EmmisiveParam)
-			PIXELUNIFORM(EdgeParam)
-			PIXELUNIFORM(SoftParticleParam)
-			PIXELUNIFORM(UVInversedBack)
-			PIXELUNIFORM(MiscFlags)
-#undef PIXELUNIFORM
+#define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, fname));
+			PUNIFORM(LightDirection)
+			PUNIFORM(LightColor)
+			PUNIFORM(LightAmbientColor)
+			PUNIFORM(FlipbookParam)
+			PUNIFORM(UVDistortionParam)
+			PUNIFORM(BlendTextureParam)
+			PUNIFORM(CameraFrontDirection)
+			PUNIFORM(FalloffParam)
+			PUNIFORM(EmmisiveParam)
+			PUNIFORM(EdgeParam)
+			PUNIFORM(SoftParticleParam)
+			PUNIFORM(UVInversedBack)
+			PUNIFORM(MiscFlags)
+#undef PUNIFORM
 		}
 		for (auto t: {
 			EffekseerRenderer::RendererShaderType::BackDistortion,
@@ -614,13 +615,13 @@ private:
 			int id = (int)t;
 			Shader * s = shaders[id];
 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
-#define PIXELDUNIFORM(name) AddUniform(s, "f" #name, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, name));
-			PIXELDUNIFORM(DistortionIntencity)
-			PIXELDUNIFORM(UVInversedBack)
-			PIXELDUNIFORM(FlipbookParam)
-			PIXELDUNIFORM(BlendTextureParam)
-			PIXELDUNIFORM(SoftParticleParam)
-#undef PIXELDUNIFORM
+#define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
+			PUNIFORM(DistortionIntencity)
+			PUNIFORM(UVInversedBack)
+			PUNIFORM(FlipbookParam)
+			PUNIFORM(BlendTextureParam)
+			PUNIFORM(SoftParticleParam)
+#undef PUNIFORM
 		}
 	}
 	bool InitShaders(struct InitArgs *init) {
@@ -682,7 +683,7 @@ private:
 		}
 		for (int i=0;i<SHADERCOUNT;i++) {
 			Shader * s = m_shaders[i];
-			if (!s->isValid())
+			if (s && !s->isValid())
 				return false;
 		}
 		SetPixelConstantBuffer(m_shaders);
@@ -829,13 +830,17 @@ public:
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
 		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
+
 		// todo: submit
+		BGFX(submit)({m_viewid}, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	void DrawPolygon(int32_t vertexCount, int32_t indexCount) {
 		BGFX(set_vertex_buffer_with_layout)(0, m_currentVertexBuffer, 0, 1, m_currentlayout);
+		assert(false);
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
+		assert(false);
 		// todo:
 	}
 	Shader* GetShader(EffekseerRenderer::RendererShaderType type) const {
@@ -863,7 +868,13 @@ public:
 		memcpy(p, data, size);
 	}
 	void SetTextures(Shader* shader, Effekseer::Backend::TextureRef* textures, int32_t count) {
-		// todo:
+		for (int32_t ii=0; ii<count; ++ii){
+			auto tex = textures[ii].DownCast<EffekseerRendererBGFX::Texture>();
+			auto sampler = shader->m_texture[ii];
+			if (BGFX_HANDLE_IS_VALID(sampler)){
+				BGFX(set_texture)(ii, sampler, tex->GetInterface(), 0);
+			}
+		}
 	}
 	void ResetRenderState() override {
 		m_renderState->GetActiveState().Reset();
@@ -957,7 +968,7 @@ public:
 		}
 
 		if (i >= to) {
-			ReleaseShader(s);
+			//ReleaseShader(s);
 			return;
 		}
 
@@ -985,7 +996,7 @@ public:
 		assert(param.Format == Effekseer::Backend::TextureFormatType::R8G8B8A8_UNORM);
 		assert(param.Dimension == 2);
 
-		const bgfx_memory_t *mem = BGFX(copy)(initialData.data(), initialData.size());
+		const bgfx_memory_t *mem = BGFX(copy)(initialData.data(), (uint32_t)initialData.size());
 		bgfx_texture_handle_t handle = BGFX(create_texture_2d)(param.Size[0], param.Size[1], false, 1, BGFX_TEXTURE_FORMAT_RGBA8,
 			BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE, mem);
 
