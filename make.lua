@@ -76,7 +76,7 @@ lm:lib "efklib" {
     deps = "source_efklib",
 }
 
-lm:dll "efkbgfx_lib" {
+lm:dll "efkbgfx" {
     deps = {
         "efklib",
         "source_efkbgfx",
@@ -97,7 +97,7 @@ local alloca_file_includes = {
 lm:exe "example"{
     deps = {
         "efklib",
-        "efkbgfx_lib",
+        "efkbgfx",
     },
     includes = {
         alloca_file_includes[plat]:string(),
