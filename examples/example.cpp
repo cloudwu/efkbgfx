@@ -211,9 +211,7 @@ private:
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
 	}
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
-		uint64_t state = srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE;
-		const uint32_t sampler_state = BGFX_SAMPLER_NONE;
-
+		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
 		return {handle.idx};
 	}
