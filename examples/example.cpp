@@ -197,15 +197,17 @@ private:
 		if (isPngFile(filename)){
 			auto image = imageLoad(filename, bgfx::TextureFormat::BGRA8);
 			assert(image && "invalid png file");
-			return bgfx::createTexture2D(
+			auto h = bgfx::createTexture2D(
 				  (uint16_t)image->m_width
 				, (uint16_t)image->m_height
 				, false
 				, 1
 				, bgfx::TextureFormat::BGRA8
 				, state
-				, bgfx::makeRef(image->m_data, image->m_size)
+				, bgfx::copy(image->m_data, image->m_size)
 				);
+			imageFree(image);
+			return h;
 		}
 
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
