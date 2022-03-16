@@ -44,7 +44,9 @@ lm:source_set "source_efklib" {
         efksrc / "EffekseerMaterial/*.cpp",
         efksrc / "EffekseerRendererCommon/*.cpp",
     },
-    defines = "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
+    defines = {
+        lm.mode == "debug" and "_DEBUG_EFFEKSEER=1" or nil
+    }
 }
 
 lm:source_set "source_efkbgfx" {

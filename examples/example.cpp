@@ -6,6 +6,7 @@
 #include <bx/uint32_t.h>
 #include <bx/math.h>
 #include <bx/readerwriter.h>
+
 #include <common.h>
 #include <bgfx_utils.h>
 #include <bgfx/c99/bgfx.h>
@@ -13,6 +14,7 @@
 #include "renderer/bgfxrenderer.h"
 #define DEF_VIEWID	0
 
+#include <string>
 namespace
 {
 
@@ -53,6 +55,7 @@ public:
 
 		m_efkRenderer = EffekseerRendererBGFX::CreateRenderer(&efkArgs);
 		m_efkManager = Effekseer::Manager::Create(8000);
+		m_efkManager->GetSetting()->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
 		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
 		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
@@ -60,14 +63,17 @@ public:
 		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
 		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
 
-		// float proj[16];
-		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
+		m_efkManager->SetTextureLoader(m_efkRenderer->CreateTextureLoader());
+		m_efkManager->SetModelLoader(m_efkRenderer->CreateModelLoader());
+		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());
+		m_efkManager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());
+
 		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
 			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
 		m_efkRenderer->SetCameraMatrix(
-		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, 20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
+		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./Laser01.efk");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -101,15 +107,11 @@ public:
 
 			static int s_time = 0;
 			static Effekseer::Handle s_handle = 0;
-			if (s_time == 0){
-				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
-			} else {
-				++s_time;
-			}
 
-			if (s_time == 119){
+			if (s_time % 120 == 0){
+				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+			} else if (s_time % 120 == 119){
 				m_efkManager->StopEffect(s_handle);
-				s_time = 0;
 			}
 
 			m_efkManager->AddLocation(s_handle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
@@ -127,6 +129,7 @@ public:
 			m_efkRenderer->EndRendering();
 			bgfx::frame();
 
+			++s_time;
 			return true;
 		}
 
@@ -184,14 +187,40 @@ private:
 		
 		return bgfx_shader_handle_t{handle.idx};
 	}
+	static bool isPngFile(const char* filename){
+		std::string s(filename);
+		for (auto &c: s) c = std::tolower(c);
+		return s.rfind(".png") != std::string::npos;
+	}
 
+	static bgfx::TextureHandle createTexture(const char* filename, uint64_t state){
+		if (isPngFile(filename)){
+			auto image = imageLoad(filename, bgfx::TextureFormat::BGRA8);
+			assert(image && "invalid png file");
+			return bgfx::createTexture2D(
+				  (uint16_t)image->m_width
+				, (uint16_t)image->m_height
+				, false
+				, 1
+				, bgfx::TextureFormat::BGRA8
+				, state
+				, bgfx::makeRef(image->m_data, image->m_size)
+				);
+		}
+
+		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
+	}
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
-		assert(false && "need impl");
-		return BGFX_INVALID_HANDLE;
+		uint64_t state = srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE;
+		const uint32_t sampler_state = BGFX_SAMPLER_NONE;
+
+		auto handle = createTexture(name, state);
+		return {handle.idx};
 	}
 
 	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
-		assert(false && "need impl");
+		bgfx::TextureHandle h = {handle.idx};
+		bgfx::destroy(h);
 	}
 private:
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
