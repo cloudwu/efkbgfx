@@ -60,6 +60,11 @@ public:
 		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
 		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
 
+		m_efkManager->SetTextureLoader(m_efkRenderer->CreateTextureLoader());
+		m_efkManager->SetModelLoader(m_efkRenderer->CreateModelLoader());
+		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());
+		m_efkManager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());
+
 		// float proj[16];
 		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
 		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
