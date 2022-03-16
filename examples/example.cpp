@@ -64,6 +64,8 @@ public:
 		// bx::mtxProj(proj, bx::toRad(90.0f/180.0f), m_width / float(m_height), 1.0f, 500.0f);
 		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
 			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
+		m_efkRenderer->SetCameraMatrix(
+		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, 20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
 		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./Laser01.efk");
 
@@ -81,6 +83,9 @@ public:
 
 	virtual int shutdown() override
 	{
+		m_efkEffect = nullptr;
+		m_efkManager = nullptr;
+		m_efkRenderer = nullptr;
 		// Shutdown bgfx.
 		bgfx::shutdown();
 
@@ -155,7 +160,13 @@ private:
 	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
 		assert(mat == nullptr);
 		const char* shaderfile = nullptr;
-		if (strcmp(name, "sprite_unlit") == 0){
+		if (strcmp(name, "sprite_unlit") == 0 /*||
+		// //TODO: just skip something not implement here
+		// 	strcmp(name, "sprite_lit") == 0 ||
+		// 	strcmp(name, "sprite_distortion") == 0 ||
+		// 	strcmp(name, "sprite_adv_unlit") == 0 ||
+		// 	strcmp(name, "sprite_adv_lit") == 0 ||
+		// 	strcmp(name, "sprite_adv_distortion") == 0*/ ){
 			if (strcmp(type, "vs") == 0){
 				shaderfile = "shaders/vs_sprite_unlit.bin";
 			} else if (strcmp(type, "fs") == 0){
@@ -164,7 +175,8 @@ private:
 				assert(false && "invalid shader type");
 			}
 		} else {
-			assert(false && "need impl");
+			//assert(false && "need impl");
+			return BGFX_INVALID_HANDLE;
 		}
 
 		bgfx::ShaderHandle handle = bgfx::createShader(loadMem(entry::getFileReader(), shaderfile) );
@@ -175,7 +187,7 @@ private:
 
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
 		assert(false && "need impl");
-		return bgfx_texture_handle_t{uint16_t(-1)};
+		return BGFX_INVALID_HANDLE;
 	}
 
 	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
