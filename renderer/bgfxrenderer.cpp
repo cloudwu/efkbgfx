@@ -177,7 +177,7 @@ private:
 		friend class RendererImplemented;
 	private:
 		static const int maxUniform = 64;
-		static const int maxTexture = 8;
+		static const int maxSamplers = 8;
 		int m_vcbSize = 0;
 		int m_pcbSize = 0;
 		int m_vsSize = 0;
@@ -189,7 +189,7 @@ private:
 			int count;
 			void * ptr;
 		} m_uniform[maxUniform];
-		bgfx_uniform_handle_t m_texture[maxTexture];
+		bgfx_uniform_handle_t m_samplers[maxSamplers];
 		bgfx_program_handle_t m_program;
 		const RendererImplemented *m_render;
 		bgfx_vertex_layout_handle_t m_layout;
@@ -870,9 +870,17 @@ public:
 	void SetTextures(Shader* shader, Effekseer::Backend::TextureRef* textures, int32_t count) {
 		for (int32_t ii=0; ii<count; ++ii){
 			auto tex = textures[ii].DownCast<EffekseerRendererBGFX::Texture>();
-			auto sampler = shader->m_texture[ii];
+			auto sampler = shader->m_samplers[ii];
 			if (BGFX_HANDLE_IS_VALID(sampler)){
-				BGFX(set_texture)(ii, sampler, tex->GetInterface(), 0);
+				const auto &state = m_renderState->GetActiveState();
+				uint32_t flags = BGFX_SAMPLER_NONE;	// default min/mag/mip as 'linear' and uv address as 'repeat'
+				if (state.TextureFilterTypes[ii] == Effekseer::TextureFilterType::Nearest){
+					flags |= BGFX_SAMPLER_MIN_POINT|BGFX_SAMPLER_MAG_POINT|BGFX_SAMPLER_MIP_POINT;
+				}
+				if (state.TextureWrapTypes[ii] == Effekseer::TextureWrapType::Clamp){
+					flags |= BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP;
+				}
+				BGFX(set_texture)(ii, sampler, tex->GetInterface(), flags);
 			}
 		}
 	}
@@ -917,8 +925,8 @@ public:
 			s->m_uniform[i+s->m_vsSize].count = 0;
 			s->m_uniform[i+s->m_vsSize].ptr = nullptr;
 		}
-		for (i=0;i<Shader::maxTexture;i++) {
-			s->m_texture[i].idx = UINT16_MAX;
+		for (i=0;i<Shader::maxSamplers;i++) {
+			s->m_samplers[i].idx = UINT16_MAX;
 		}
 	}
 	void ReleaseShader(Shader *s) const {
@@ -983,10 +991,10 @@ public:
 			break;
 		case Shader::UniformType::Texture:
 			assert(info.type == BGFX_UNIFORM_TYPE_SAMPLER);
-			assert(offset >= 0 && offset < Shader::maxTexture);
+			assert(0 <= offset && offset < Shader::maxSamplers);
 			s->m_uniform[i].count = offset + 1;
-			assert(s->m_texture[offset].idx == UINT16_MAX);
-			s->m_texture[offset] = s->m_uniform[i].handle;
+			assert(!BGFX_HANDLE_IS_VALID(s->m_samplers[offset]));
+			s->m_samplers[offset] = s->m_uniform[i].handle;
 			break;
 		}
 	}
