@@ -448,6 +448,7 @@ private:
 		void UpdateData(const void* src, int32_t size, int32_t offset) override { assert(false); }	// Can't Update
 		bgfx_vertex_buffer_handle_t GetInterface() const { return m_buffer; }
 	};
+public:
 	class ModelRenderer : public EffekseerRenderer::ModelRendererBase {
 	private:
 		RendererImplemented* m_render;
@@ -458,6 +459,8 @@ private:
 			for (i=0;i<SHADERCOUNT;i++) {
 				m_shaders[i] = nullptr;
 			}
+
+			VertexType = EffekseerRenderer::ModelRendererVertexType::Instancing;
 		}
 		virtual ~ModelRenderer() override {
 			for (auto shader : m_shaders) {
@@ -467,15 +470,13 @@ private:
 		bool Initialize(struct InitArgs *init) {
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
-				EffekseerRenderer::RendererShaderType::Lit,
-				EffekseerRenderer::RendererShaderType::BackDistortion,
-				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-				EffekseerRenderer::RendererShaderType::AdvancedLit,
-				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+				// EffekseerRenderer::RendererShaderType::Lit,
+				// EffekseerRenderer::RendererShaderType::BackDistortion,
+				// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				// EffekseerRenderer::RendererShaderType::AdvancedLit,
+				// EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 			}) {
-				bgfx_vertex_layout_t layout;
-				m_render->GenVertexLayout(&layout, t);
-				Shader * s = m_render->CreateShader(&layout);
+				Shader * s = m_render->CreateShader(&m_render->m_modellayout);
 				int id = (int)t;
 				m_shaders[id] = s;
 				const char *shadername = NULL;
@@ -502,61 +503,59 @@ private:
 					assert(false);
 					break;
 				}
-				m_render->InitShader(s,
+				if (!m_render->InitShader(s,
 					m_render->LoadShader(NULL, shadername, "vs"),
-					m_render->LoadShader(NULL, shadername, "fs"));
-			}
-			for (int i=0;i<SHADERCOUNT;i++) {
-				Shader * s = m_shaders[i];
-				if (!s->isValid())
+					m_render->LoadShader(NULL, shadername, "fs"))){
 					return false;
+				}
 			}
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
-				EffekseerRenderer::RendererShaderType::Lit,
-				EffekseerRenderer::RendererShaderType::BackDistortion,
+				// EffekseerRenderer::RendererShaderType::Lit,
+				// EffekseerRenderer::RendererShaderType::BackDistortion,
 			}) {
 				Shader * s = m_shaders[(int)t];
 				typedef EffekseerRenderer::ModelRendererVertexConstantBuffer<MaxInstanced> VCB;
 				s->SetVertexConstantBufferSize(sizeof(VCB));
 #define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-					VUNIFORM("u_Camera", CameraMatrix)
-					VUNIFORM("u_Model", ModelMatrix)
-					VUNIFORM("u_ModelUV", ModelUV)
-					VUNIFORM("u_ModelColor", ModelColor)
-					VUNIFORM("u_LightDirection", LightDirection)
-					VUNIFORM("u_LightColor", LightColor)
+					VUNIFORM("u_CameraProj", 	CameraMatrix)
+					VUNIFORM("u_Model", 		ModelMatrix)
+					VUNIFORM("u_ModelUV", 		ModelUV)
+					VUNIFORM("u_ModelColor", 	ModelColor)
+					VUNIFORM("u_LightDirection",LightDirection)
+					VUNIFORM("u_LightColor", 	LightColor)
 					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
-					VUNIFORM("u_UVInversed", UVInversed)
+					VUNIFORM("u_UVInversed", 	UVInversed)
+					m_render->AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
 #undef VUNIFORM
 			}
-			for (auto t : {
-				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-				EffekseerRenderer::RendererShaderType::AdvancedLit,
-				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
-			}) {
-				Shader * s = m_shaders[(int)t];
-				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
-				s->SetVertexConstantBufferSize(sizeof(VCB));
-#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-					VUNIFORM("u_Camera", CameraMatrix)
-					VUNIFORM("u_Model", ModelMatrix)
-					VUNIFORM("u_ModelUV", ModelUV)
-					VUNIFORM("u_ModelAlphaUV", ModelAlphaUV)
-					VUNIFORM("u_ModelUVDistortionUV", ModelUVDistortionUV)
-					VUNIFORM("u_ModelBlendUV", ModelBlendUV)
-					VUNIFORM("u_ModelBlendAlphaUV", ModelBlendAlphaUV)
-					VUNIFORM("u_ModelBlendUVDistortionUV", ModelBlendUVDistortionUV)
-					VUNIFORM("u_ModelFlipbookParameter", ModelFlipbookParameter)
-					VUNIFORM("u_ModelFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
-					VUNIFORM("u_ModelAlphaThreshold", ModelAlphaThreshold)
-					VUNIFORM("u_ModelColor", ModelColor)
-					VUNIFORM("u_LightDirection", LightDirection)
-					VUNIFORM("u_LightColor", LightColor)
-					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
-					VUNIFORM("u_UVInversed", UVInversed)
-#undef VUNIFORM
-			}
+// 			for (auto t : {
+// 				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+// 				EffekseerRenderer::RendererShaderType::AdvancedLit,
+// 				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+// 			}) {
+// 				Shader * s = m_shaders[(int)t];
+// 				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
+// 				s->SetVertexConstantBufferSize(sizeof(VCB));
+// #define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+// 					VUNIFORM("u_Camera", CameraMatrix)
+// 					VUNIFORM("u_Model", ModelMatrix)
+// 					VUNIFORM("u_ModelUV", ModelUV)
+// 					VUNIFORM("u_ModelAlphaUV", ModelAlphaUV)
+// 					VUNIFORM("u_ModelUVDistortionUV", ModelUVDistortionUV)
+// 					VUNIFORM("u_ModelBlendUV", ModelBlendUV)
+// 					VUNIFORM("u_ModelBlendAlphaUV", ModelBlendAlphaUV)
+// 					VUNIFORM("u_ModelBlendUVDistortionUV", ModelBlendUVDistortionUV)
+// 					VUNIFORM("u_ModelFlipbookParameter", ModelFlipbookParameter)
+// 					VUNIFORM("u_ModelFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
+// 					VUNIFORM("u_ModelAlphaThreshold", ModelAlphaThreshold)
+// 					VUNIFORM("u_ModelColor", ModelColor)
+// 					VUNIFORM("u_LightDirection", LightDirection)
+// 					VUNIFORM("u_LightColor", LightColor)
+// 					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
+// 					VUNIFORM("u_UVInversed", UVInversed)
+// #undef VUNIFORM
+//			}
 			m_render->SetPixelConstantBuffer(m_shaders);
 			return true;
 		}
@@ -586,6 +585,7 @@ private:
 				m_render, shader_ad_lit_, shader_ad_unlit_, shader_ad_distortion_, shader_lit_, shader_unlit_, shader_distortion_, parameter, userData);
 		}
 	};
+private:
 	GraphicsDeviceRef m_device = nullptr;
 	bgfx_interface_vtbl_t * m_bgfx = nullptr;
 	EffekseerRenderer::RenderStateBase* m_renderState = nullptr;
@@ -817,9 +817,11 @@ private:
 				assert(false);
 				break;
 			}
-			InitShader(s,
+			if (!InitShader(s,
 				LoadShader(NULL, shadername, "vs"),
-				LoadShader(NULL, shadername, "fs"));
+				LoadShader(NULL, shadername, "fs"))){
+				return false;
+			}
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
 			AddUniform(s, "u_Camera", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[0]));
@@ -830,11 +832,6 @@ private:
 			AddUniform(s, "u_vsFlipbookParameter", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
 			AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
-		}
-		for (int i=0;i<SHADERCOUNT;i++) {
-			Shader * s = m_shaders[i];
-			if (s && !s->isValid())
-				return false;
 		}
 		SetPixelConstantBuffer(m_shaders);
 		return true;
@@ -964,15 +961,14 @@ public:
 	// For ModelRenderer, See ModelRendererBase
 	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
 		(void)stride;
-		m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
+		//m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
+		BGFX(set_vertex_buffer)(0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		assert(indexBuffer == m_indexBuffer);
-		//BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
 	}
-	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) const {
-		bgfx_index_buffer_handle_t ib = indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface();
-		BGFX(set_index_buffer)(ib, 0, UINT32_MAX);
+	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) {
+		BGFX(set_index_buffer)(indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {
 		m_currentlayout = shader->m_layout;
@@ -981,17 +977,15 @@ public:
 		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
 		const uint32_t indexCount = spriteCount * 6;
 		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
-		BGFX(submit)({m_viewid}, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
+		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	void DrawPolygon(int32_t vertexCount, int32_t indexCount) {
-		BGFX(set_vertex_buffer_with_layout)(0, m_currentVertexBuffer, 0, vertexCount, m_currentlayout);
-		//BGFX(set_index_buffer)();
-		BGFX(submit)({m_viewid}, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
-		assert(false);
-		// todo:
+		//BGFX(set_vertex_buffer)(0, m_currentVertexBuffer, 0, vertexCount);
+		BGFX(set_instance_count)(instanceCount);
+		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	Shader* GetShader(EffekseerRenderer::RendererShaderType type) const {
 		int n = (int)type;
@@ -1055,11 +1049,11 @@ public:
 		return new Shader(this, BGFX(create_vertex_layout)(layout));
 	}
 	// Shader API
-	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
+	bool InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;
-			return;
+			return false;
 		}
 		bgfx_uniform_handle_t u[Shader::maxUniform];
 		s->m_vsSize = BGFX(get_shader_uniforms)(vs, u, Shader::maxUniform);
@@ -1078,6 +1072,7 @@ public:
 		for (i=0;i<Shader::maxSamplers;i++) {
 			s->m_samplers[i].idx = UINT16_MAX;
 		}
+		return true;
 	}
 	void ReleaseShader(Shader *s) const {
 		BGFX(destroy_vertex_layout)(s->m_layout);
@@ -1126,7 +1121,6 @@ public:
 		}
 
 		if (i >= to) {
-			//ReleaseShader(s);
 			return;
 		}
 
@@ -1302,6 +1296,11 @@ EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init) {
 		return renderer;
 	}
 	return nullptr;
+}
+
+Effekseer::ModelRendererRef CreateModelRenderer(EffekseerRenderer::RendererRef renderer, struct InitArgs *init){
+	auto modelRenderer = renderer->CreateModelRenderer();
+	return modelRenderer.DownCast<RendererImplemented::ModelRenderer>()->Initialize(init) ? modelRenderer : nullptr;
 }
 
 }

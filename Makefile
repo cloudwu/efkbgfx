@@ -44,7 +44,7 @@ efkmat.dll : $(EFKMATC_SOURCES) libeffekseer.a
 
 
 efkbgfx.dll : $(EFKBGFX_SOURCES) libeffekseer.a
-	$(CC) -o $@ $(SHARED) $(CFLAGS) -o $@ $^ $(EFFEKSEER_INC) $(BGFX_INC) $(BGFX_LIBS) $(LIBS)
+	$(CC) -o $@ $(SHARED) $(CFLAGS) -DMaxInstanced=20 -o $@ $^ $(EFFEKSEER_INC) $(BGFX_INC) $(BGFX_LIBS) $(LIBS)
 
 
 clean :

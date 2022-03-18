@@ -27,6 +27,7 @@ namespace EffekseerRendererBGFX {
 	};
 
 	EFXBGFX_API EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init);
+	EFXBGFX_API Effekseer::ModelRendererRef CreateModelRenderer(EffekseerRenderer::RendererRef renderer, struct InitArgs *init);
 }
 
 #endif

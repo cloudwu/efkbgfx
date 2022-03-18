@@ -57,12 +57,11 @@ public:
 		m_efkManager = Effekseer::Manager::Create(8000);
 		m_efkManager->GetSetting()->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
+		m_efkManager->SetModelRenderer(CreateModelRenderer(m_efkRenderer, &efkArgs));
 		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
 		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
 		m_efkManager->SetRingRenderer(m_efkRenderer->CreateRingRenderer());
 		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
-		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
-
 		m_efkManager->SetTextureLoader(m_efkRenderer->CreateTextureLoader());
 		m_efkManager->SetModelLoader(m_efkRenderer->CreateModelLoader());
 		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());
@@ -73,7 +72,7 @@ public:
 		m_efkRenderer->SetCameraMatrix(
 		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -177,6 +176,14 @@ private:
 			} else {
 				assert(false && "invalid shader type");
 			}
+		} else if (strcmp(name, "model_unlit") == 0) {
+			if (strcmp(type, "vs") == 0){
+				shaderfile = "shaders/vs_model_unlit.bin";
+			} else if (strcmp(type, "fs") == 0){
+				shaderfile = "shaders/fs_model_unlit.bin";
+			} else {
+				assert(false && "invalid shader type");
+			}
 		} else {
 			//assert(false && "need impl");
 			return BGFX_INVALID_HANDLE;
@@ -197,23 +204,23 @@ private:
 		if (isPngFile(filename)){
 			auto image = imageLoad(filename, bgfx::TextureFormat::BGRA8);
 			assert(image && "invalid png file");
-			return bgfx::createTexture2D(
+			auto h = bgfx::createTexture2D(
 				  (uint16_t)image->m_width
 				, (uint16_t)image->m_height
 				, false
 				, 1
 				, bgfx::TextureFormat::BGRA8
 				, state
-				, bgfx::makeRef(image->m_data, image->m_size)
+				, bgfx::copy(image->m_data, image->m_size)
 				);
+			imageFree(image);
+			return h;
 		}
 
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
 	}
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
-		uint64_t state = srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE;
-		const uint32_t sampler_state = BGFX_SAMPLER_NONE;
-
+		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
 		return {handle.idx};
 	}

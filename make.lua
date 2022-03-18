@@ -49,6 +49,8 @@ lm:source_set "source_efklib" {
     }
 }
 
+local MaxInstanced<const> = 20
+
 lm:source_set "source_efkbgfx" {
     includes = {
         efklib_includes,
@@ -60,6 +62,7 @@ lm:source_set "source_efkbgfx" {
     defines = {
         "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
         "EFXBGFX_EXPORTS=1",
+        "MaxInstanced=" .. MaxInstanced,
     }
 }
 
@@ -159,6 +162,14 @@ local shaderfiles = {
     {
         file = cwd / example_shader_dir / "fs_model_unlit.sc",
         defines = {},
+    },
+    {
+        file = cwd / example_shader_dir / "vs_model.sc",
+        defines = {
+            "ENABLE_COLOR_TEXTURE=1",
+            "__INST__=" .. MaxInstanced,
+        },
+        output = cwd / example_shader_dir / "vs_model_unlit.bin",
     }
 }
 
@@ -174,13 +185,13 @@ end
 
 for _, sf in ipairs(shaderfiles) do
     local f = sf.file
-    local output = fs.path(f):replace_extension "bin":string()
+    local output = sf.output or fs.path(f):replace_extension "bin":string()
     local cfg = {
         renderer = platform_renderers[lm.os],
         stage = f:string():match "([vfc]s)_",
         plat = lm.os,
         optimizelevel = 3,
-        --debug = true,
+        debug = true,
         includes = {
             cwd / bgfxdir / "src",
             cwd / bgfx_example_dir / "common",

@@ -61,9 +61,9 @@ local function generate_command(shaderc, cfg)
         end
     end
     
-    if cfg.macros then
+    if cfg.defines then
         local t = {}
-        for _, m in ipairs(cfg.macros) do
+        for _, m in ipairs(cfg.defines) do
             t[#t+1] = m
         end
         if #t > 0 then

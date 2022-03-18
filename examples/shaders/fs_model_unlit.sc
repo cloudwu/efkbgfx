@@ -1,4 +1,4 @@
-$input v_color, v_texcoord0, v_posP
+$input v_color0, v_texcoord0, v_posP
 #include <bgfx_shader.sh>
 #include <shaderlib.sh>
 
@@ -17,7 +17,7 @@ void main()
     if (convertColorSpace){
         texcolor = toLinear(texcolor);
     }
-    vec4 Output = texcolor * v_color;
+    vec4 Output = texcolor * v_color0;
 	Output.rgb *= fEmissiveScaling;
 
 	if (Output.a == 0.0)
