@@ -58,6 +58,7 @@ public:
 		m_efkManager->GetSetting()->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
 		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
+		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
 		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
 		m_efkManager->SetRingRenderer(m_efkRenderer->CreateRingRenderer());
 		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
@@ -73,7 +74,7 @@ public:
 		m_efkRenderer->SetCameraMatrix(
 		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/toonwater.efk");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -172,6 +173,14 @@ private:
 		// 	strcmp(name, "sprite_adv_distortion") == 0*/ ){
 			if (strcmp(type, "vs") == 0){
 				shaderfile = "shaders/vs_sprite_unlit.bin";
+			} else if (strcmp(type, "fs") == 0){
+				shaderfile = "shaders/fs_model_unlit.bin";
+			} else {
+				assert(false && "invalid shader type");
+			}
+		} else if (strcmp(name, "model_unlit") == 0) {
+			if (strcmp(type, "vs") == 0){
+				shaderfile = "shaders/vs_model_unlit.bin";
 			} else if (strcmp(type, "fs") == 0){
 				shaderfile = "shaders/fs_model_unlit.bin";
 			} else {
