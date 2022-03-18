@@ -93,6 +93,7 @@ local function gen(filename)
 			})
 		end
 	end
+	-- uniform
 	for layout, data in source:gmatch "\n(layout.-)\n(%b{}%s+[%w_]+;)" do
 		table.insert(valid_lines, layout)
 		table.insert(valid_lines, data)
@@ -103,9 +104,15 @@ local function gen(filename)
 			attrib = attrib,
 			name = name,
 		}
-		for k,v in kv:gmatch "\n%s+(.-)%s+([%w_]+);" do
+		for k,v in kv:gmatch "\n%s+(.-)%s+([%w_%[%]]+);" do
 			k = k:match "[%w_]*$"
-			table.insert(layout, { type = k, name = v })
+			local name, array = v:match "(.+)%[(%d+)%]"
+			if name then
+				array = tonumber(array)
+			else
+				name = v
+			end
+			table.insert(layout, { type = k, name = name, array = array })
 		end
 		table.insert(shader.uniform, layout)
 	end
@@ -208,7 +215,11 @@ local function gen_uniform(s)
 	local map = {}
 	local u = s.uniform[1]
 	for i,item in ipairs(u) do
-		table.insert(uniform, string.format("uniform %s u_%s;",item.type, item.name))
+		if item.array then
+			table.insert(uniform, string.format("uniform %s u_%s[%d];",item.type, item.name, item.array))
+		else
+			table.insert(uniform, string.format("uniform %s u_%s;",item.type, item.name))
+		end
 		map[u.name .. "." .. item.name] = "u_" .. item.name
 	end
 	return {
@@ -256,7 +267,10 @@ local function genshader(name, type)
 	main = main:gsub("_entryPointOutput", "gl_FragColor")
 	func.main.imp = main
 
-	func._main.imp = func._main.imp:gsub("[%w_]+", uniform.map)
+	local u = func._main.imp
+	u = u:gsub("[%w_]+", uniform.map)
+	u = u:gsub("[%w_]+%.[%w_]+", uniform.map)
+	func._main.imp = u
 
 	for i, f in ipairs(func) do
 		f.imp = f.imp:gsub("texture%([%w_]+", texture.map)
@@ -295,3 +309,6 @@ writefile("vs_sprite_lit.sc", r.source)
 
 local r = genshader("model_lit_ps.fx.frag", "Lit")
 writefile("fs_model_lit.sc", r.source)
+
+--local r = genshader("model_lit_vs.fx.vert", "Lit")
+--writefile("vs_model_lit.sc", r.source)

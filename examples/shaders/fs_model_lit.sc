@@ -102,29 +102,29 @@ vec4 ConvertToScreen(vec4 c, bool isValid)
 
 vec4 _main(PS_Input Input)
 {
-    bool convertColorSpace = !(_225.miscFlags.x == 0.0);
+    bool convertColorSpace = !(u_miscFlags.x == 0.0);
     vec4 param = texture2D(s_colorTex, Input.UV);
     bool param_1 = convertColorSpace;
     vec4 Output = ConvertFromSRGBTexture(param, param_1) * Input.Color;
     vec3 texNormal = (texture2D(s_normalTex, Input.UV).xyz - vec3(0.5)) * 2.0;
     vec3 localNormal = normalize(mat3(vec3(Input.WorldT), vec3(Input.WorldB), vec3(Input.WorldN)) * texNormal);
-    float diffuse = max(dot(_225.fLightDirection.xyz, localNormal), 0.0);
-    vec3 _311 = Output.xyz * ((_225.fLightColor.xyz * diffuse) + _225.fLightAmbient.xyz);
+    float diffuse = max(dot(u_fLightDirection.xyz, localNormal), 0.0);
+    vec3 _311 = Output.xyz * ((u_fLightColor.xyz * diffuse) + u_fLightAmbient.xyz);
     Output = vec4(_311.x, _311.y, _311.z, Output.w);
-    vec3 _319 = Output.xyz * _225.fEmissiveScaling.x;
+    vec3 _319 = Output.xyz * u_fEmissiveScaling.x;
     Output = vec4(_319.x, _319.y, _319.z, Output.w);
     vec4 screenPos = Input.PosP / vec4(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2(1.0)) / vec2(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    screenUV.y = _225.mUVInversedBack.x + (_225.mUVInversedBack.y * screenUV.y);
-    if (!(_225.softParticleParam.w == 0.0))
+    screenUV.y = u_mUVInversedBack.x + (u_mUVInversedBack.y * screenUV.y);
+    if (!(u_softParticleParam.w == 0.0))
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_2 = backgroundZ;
         float param_3 = screenPos.z;
-        vec4 param_4 = _225.softParticleParam;
-        vec4 param_5 = _225.reconstructionParam1;
-        vec4 param_6 = _225.reconstructionParam2;
+        vec4 param_4 = u_softParticleParam;
+        vec4 param_5 = u_reconstructionParam1;
+        vec4 param_6 = u_reconstructionParam2;
         Output.w *= SoftParticle(param_2, param_3, param_4, param_5, param_6);
     }
     if (Output.w == 0.0)
