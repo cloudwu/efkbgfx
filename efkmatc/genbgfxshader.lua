@@ -1,8 +1,8 @@
---E:\opensource\Effekseer\Dev\Cpp\EffekseerRendererVulkan\EffekseerRenderer\Shader\ad_model_distortion_ps.fx.frag
-
 local efkmat = require "efkmat"
 
 local path = "../Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader/"
+local output_path = "examples/shaders/"
+
 local filelist = {
 	"ad_model_distortion_ps.fx.frag",
 	"ad_model_distortion_vs.fx.vert",
@@ -244,7 +244,7 @@ $struct
 $source
 ]]
 
-local function genshader(name, type, output_name)
+local function genshader(name, type)
 	local fullname = path .. name
 	local s = gen(fullname)
 	local varying = gen_varying(s, efkmat.layout(ShaderType[type]))
@@ -283,8 +283,15 @@ local function genshader(name, type, output_name)
 	}
 end
 
+local function writefile(filename, text)
+	local f = assert(io.open(output_path .. filename, "wb"))
+	f:write(text)
+	f:close()
+end
+
+local r = genshader("sprite_lit_vs.fx.vert", "Lit")
+writefile("lit_varying.def.sc", r.varying)
+writefile("vs_sprite_lit.sc", r.source)
+
 local r = genshader("model_lit_ps.fx.frag", "Lit")
-print(r.varying)
-print(r.source)
-local r = genshader("model_lit_vs.fx.vert", "Lit")
-print(r.source)
+writefile("fs_model_lit.sc", r.source)
