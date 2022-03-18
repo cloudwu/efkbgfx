@@ -348,6 +348,7 @@ public:
 					VUNIFORM("u_LightColor", 	LightColor)
 					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
 					VUNIFORM("u_UVInversed", 	UVInversed)
+					m_render->AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
 #undef VUNIFORM
 			}
 // 			for (auto t : {
@@ -783,15 +784,14 @@ public:
 	// For ModelRenderer, See ModelRendererBase
 	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
 		(void)stride;
-		m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
+		//m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
+		BGFX(set_vertex_buffer)(0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		assert(indexBuffer == m_indexBuffer);
-		//BGFX(set_index_buffer)(indexBuffer->GetInterface(), 0, UINT32_MAX);
 	}
-	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) const {
-		bgfx_index_buffer_handle_t ib = indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface();
-		BGFX(set_index_buffer)(ib, 0, UINT32_MAX);
+	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) {
+		BGFX(set_index_buffer)(indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {
 		m_currentlayout = shader->m_layout;
@@ -806,16 +806,8 @@ public:
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
-		BGFX(set_vertex_buffer)(0, m_currentVertexBuffer, 0, vertexCount);
-		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
-
-		// we fake bgfx to make it call draw instance with correct instance number
-		bgfx_instance_data_buffer_t idb;
-		const uint32_t instanceStride = 16;
-		assert(BGFX(get_avail_instance_data_buffer)(instanceCount, instanceStride) == instanceCount);
-		BGFX(alloc_instance_data_buffer)(&idb, instanceCount, instanceStride);
-		BGFX(set_instance_data_buffer)(&idb, 0, instanceCount);
-		
+		//BGFX(set_vertex_buffer)(0, m_currentVertexBuffer, 0, vertexCount);
+		BGFX(set_instance_count)(instanceCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	Shader* GetShader(EffekseerRenderer::RendererShaderType type) const {
