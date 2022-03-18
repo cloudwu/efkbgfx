@@ -6,6 +6,7 @@ extern "C" {
 }
 
 #include <Effekseer/Material/Effekseer.MaterialFile.h>
+#include <EffekseerRendererCommon/EffekseerRenderer.CommonUtils.h>
 
 static int
 lloadMat(lua_State *L) {
@@ -94,6 +95,85 @@ lloadMat(lua_State *L) {
 	return 1;
 }
 
+// layout
+
+class VertexLayout;
+using VertexLayoutRef = Effekseer::RefPtr<VertexLayout>;
+
+class VertexLayout : public Effekseer::Backend::VertexLayout {
+private:
+	Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement> elements_;
+public:
+	VertexLayout(const Effekseer::Backend::VertexLayoutElement* elements, int32_t elementCount) {
+		elements_.resize(elementCount);
+		for (int32_t i = 0; i < elementCount; i++) {
+			elements_[i] = elements[i];
+		}
+	}
+	~VertexLayout() = default;
+	const Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement>& GetElements() const	{
+		return elements_;
+	}
+};
+
+class GraphicsDevice : public Effekseer::Backend::GraphicsDevice {
+public:
+	GraphicsDevice() = default;
+	~GraphicsDevice() override = default;
+
+	Effekseer::Backend::VertexLayoutRef CreateVertexLayout(const Effekseer::Backend::VertexLayoutElement* elements, int32_t elementCount) override {
+		return Effekseer::MakeRefPtr<VertexLayout>(elements, elementCount);
+	}
+};
+
+static int
+llayout(lua_State *L) {
+	int t = luaL_checkinteger(L, 1);
+	if (t < (int) EffekseerRenderer::RendererShaderType::Unlit || t > (int)EffekseerRenderer::RendererShaderType::AdvancedBackDistortion) {
+		luaL_error(L, "Invalid shader type");
+	}
+	VertexLayoutRef v = EffekseerRenderer::GetVertexLayout(Effekseer::MakeRefPtr<GraphicsDevice>(), (EffekseerRenderer::RendererShaderType)t).DownCast<VertexLayout>();
+	const auto &elements = v->GetElements();
+	int n = elements.size();
+	lua_createtable(L, n, 0);
+	for (int i = 0; i < n; i++) {
+		lua_newtable(L);
+		const auto &e = elements[i];
+		switch (e.Format) {
+		case Effekseer::Backend::VertexLayoutFormat::R32_FLOAT :
+			lua_pushstring(L, "R32_FLOAT");
+			break;
+		case Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT :
+			lua_pushstring(L, "R32G32_FLOAT");
+			break;
+		case Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT :
+			lua_pushstring(L, "R32G32B32_FLOAT");
+			break;
+		case Effekseer::Backend::VertexLayoutFormat::R32G32B32A32_FLOAT :
+			lua_pushstring(L, "R32G32B32A32_FLOAT");
+			break;
+		case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM :
+			lua_pushstring(L, "R8G8B8A8_UNORM");
+			break;
+		case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UINT :
+			lua_pushstring(L, "R8G8B8A8_UINT");
+			break;
+		default:
+			return luaL_error(L, "Invalid Format");
+		}
+		lua_setfield(L, -2, "Format");
+		lua_pushstring(L, e.Name.c_str());
+		lua_setfield(L, -2, "Name");
+		lua_pushstring(L, e.SemanticName.c_str());
+		lua_setfield(L, -2, "SemanticName");
+		lua_pushinteger(L, e.SemanticIndex);
+		lua_setfield(L, -2, "SemanticIndex");
+
+		lua_rawseti(L, -2, i+1);
+	}
+	return 1;
+}
+
 extern "C" {
 
 LUAMOD_API int
@@ -101,6 +181,7 @@ luaopen_efkmat(lua_State *L) {
 	luaL_checkversion(L);
 	luaL_Reg l[] = {
 		{ "load", lloadMat },
+		{ "layout", llayout },
 		{ NULL, NULL },
 	};
 	luaL_newlib(L, l);
