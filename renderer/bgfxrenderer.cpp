@@ -322,14 +322,11 @@ private:
 					assert(false);
 					break;
 				}
-				m_render->InitShader(s,
+				if (!m_render->InitShader(s,
 					m_render->LoadShader(NULL, shadername, "vs"),
-					m_render->LoadShader(NULL, shadername, "fs"));
-			}
-			for (int i=0;i<SHADERCOUNT;i++) {
-				Shader * s = m_shaders[i];
-				if (s && !s->isValid())
+					m_render->LoadShader(NULL, shadername, "fs"))){
 					return false;
+				}
 			}
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,

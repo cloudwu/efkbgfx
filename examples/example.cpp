@@ -74,7 +74,7 @@ public:
 		m_efkRenderer->SetCameraMatrix(
 		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/toonwater.efk");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
