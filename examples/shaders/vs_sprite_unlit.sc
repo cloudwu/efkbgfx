@@ -1,5 +1,5 @@
 $input a_position, a_color0, a_texcoord0
-$output v_color, v_texcoord0, v_posP
+$output v_color0, v_texcoord0, v_posP
 
 // linear centroid float4 Color : COLOR;
 // linear centroid float2 UV : TEXCOORD0;
@@ -19,5 +19,5 @@ void main()
     v_texcoord0 = vec2(a_texcoord0.x,
         u_UVInversed.x + u_UVInversed.y * a_texcoord0.y);
 
-    v_color = a_color0;
+    v_color0 = a_color0;
 }

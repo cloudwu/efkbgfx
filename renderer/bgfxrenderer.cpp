@@ -637,9 +637,11 @@ private:
 				assert(false);
 				break;
 			}
-			InitShader(s,
+			if (!InitShader(s,
 				LoadShader(NULL, shadername, "vs"),
-				LoadShader(NULL, shadername, "fs"));
+				LoadShader(NULL, shadername, "fs"))){
+				return false;
+			}
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
 			AddUniform(s, "u_Camera", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[0]));
@@ -650,11 +652,6 @@ private:
 			AddUniform(s, "u_vsFlipbookParameter", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
 			AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
-		}
-		for (int i=0;i<SHADERCOUNT;i++) {
-			Shader * s = m_shaders[i];
-			if (s && !s->isValid())
-				return false;
 		}
 		SetPixelConstantBuffer(m_shaders);
 		return true;
@@ -882,11 +879,11 @@ public:
 		return new Shader(this, BGFX(create_vertex_layout)(layout));
 	}
 	// Shader API
-	void InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
+	bool InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;
-			return;
+			return false;
 		}
 		bgfx_uniform_handle_t u[Shader::maxUniform];
 		s->m_vsSize = BGFX(get_shader_uniforms)(vs, u, Shader::maxUniform);
@@ -905,6 +902,7 @@ public:
 		for (i=0;i<Shader::maxSamplers;i++) {
 			s->m_samplers[i].idx = UINT16_MAX;
 		}
+		return true;
 	}
 	void ReleaseShader(Shader *s) const {
 		BGFX(destroy_vertex_layout)(s->m_layout);
