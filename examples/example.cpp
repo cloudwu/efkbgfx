@@ -57,13 +57,11 @@ public:
 		m_efkManager = Effekseer::Manager::Create(8000);
 		m_efkManager->GetSetting()->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
+		m_efkManager->SetModelRenderer(CreateModelRenderer(m_efkRenderer, &efkArgs));
 		m_efkManager->SetSpriteRenderer(m_efkRenderer->CreateSpriteRenderer());
-		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
 		m_efkManager->SetRibbonRenderer(m_efkRenderer->CreateRibbonRenderer());
 		m_efkManager->SetRingRenderer(m_efkRenderer->CreateRingRenderer());
 		m_efkManager->SetTrackRenderer(m_efkRenderer->CreateTrackRenderer());
-		m_efkManager->SetModelRenderer(m_efkRenderer->CreateModelRenderer());
-
 		m_efkManager->SetTextureLoader(m_efkRenderer->CreateTextureLoader());
 		m_efkManager->SetModelLoader(m_efkRenderer->CreateModelLoader());
 		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());

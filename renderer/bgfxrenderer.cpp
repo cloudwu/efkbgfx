@@ -269,6 +269,7 @@ private:
 		void UpdateData(const void* src, int32_t size, int32_t offset) override { assert(false); }	// Can't Update
 		bgfx_vertex_buffer_handle_t GetInterface() const { return m_buffer; }
 	};
+public:
 	class ModelRenderer : public EffekseerRenderer::ModelRendererBase {
 	private:
 		//static const int32_t MaxInstanced = 20;
@@ -280,6 +281,8 @@ private:
 			for (i=0;i<SHADERCOUNT;i++) {
 				m_shaders[i] = nullptr;
 			}
+
+			VertexType = EffekseerRenderer::ModelRendererVertexType::Instancing;
 		}
 		virtual ~ModelRenderer() override {
 			for (auto shader : m_shaders) {
@@ -289,11 +292,11 @@ private:
 		bool Initialize(struct InitArgs *init) {
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
-				EffekseerRenderer::RendererShaderType::Lit,
-				EffekseerRenderer::RendererShaderType::BackDistortion,
-				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-				EffekseerRenderer::RendererShaderType::AdvancedLit,
-				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+				// EffekseerRenderer::RendererShaderType::Lit,
+				// EffekseerRenderer::RendererShaderType::BackDistortion,
+				// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				// EffekseerRenderer::RendererShaderType::AdvancedLit,
+				// EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 			}) {
 				Shader * s = m_render->CreateShader(&m_render->m_modellayout);
 				int id = (int)t;
@@ -403,6 +406,7 @@ private:
 				m_render, shader_ad_lit_, shader_ad_unlit_, shader_ad_distortion_, shader_lit_, shader_unlit_, shader_distortion_, parameter, userData);
 		}
 	};
+private:
 	GraphicsDeviceRef m_device = nullptr;
 	bgfx_interface_vtbl_t * m_bgfx = nullptr;
 	EffekseerRenderer::RenderStateBase* m_renderState = nullptr;
@@ -807,7 +811,7 @@ public:
 
 		// we fake bgfx to make it call draw instance with correct instance number
 		bgfx_instance_data_buffer_t idb;
-		const uint32_t instanceStride = 1;
+		const uint32_t instanceStride = 16;
 		assert(BGFX(get_avail_instance_data_buffer)(instanceCount, instanceStride) == instanceCount);
 		BGFX(alloc_instance_data_buffer)(&idb, instanceCount, instanceStride);
 		BGFX(set_instance_data_buffer)(&idb, 0, instanceCount);
@@ -1086,6 +1090,11 @@ EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init) {
 		return renderer;
 	}
 	return nullptr;
+}
+
+Effekseer::ModelRendererRef CreateModelRenderer(EffekseerRenderer::RendererRef renderer, struct InitArgs *init){
+	auto modelRenderer = renderer->CreateModelRenderer();
+	return modelRenderer.DownCast<RendererImplemented::ModelRenderer>()->Initialize(init) ? modelRenderer : nullptr;
 }
 
 }
