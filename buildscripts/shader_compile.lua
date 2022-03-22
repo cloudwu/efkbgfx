@@ -50,6 +50,11 @@ local function generate_command(shaderc, cfg)
         output = cfg.output,
     }
 
+    if cfg.varying_path then
+        commands[#commands+1] = "--varyingdef"
+        commands[#commands+1] = cfg.varying_path
+    end
+
     if cfg.includes then
         for _, p in ipairs(cfg.includes) do
             if not fs.exists(p) then

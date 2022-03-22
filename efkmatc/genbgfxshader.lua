@@ -1,28 +1,8 @@
+package.cpath = "efkmatc/?.dll;./?.dll"
+
 local efkmat = require "efkmat"
 
-local path = "../Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader/"
-local output_path = "examples/shaders/"
 
-local filelist = {
-	"ad_model_distortion_ps.fx.frag",
-	"ad_model_distortion_vs.fx.vert",
-	"ad_model_lit_ps.fx.frag",
-	"ad_model_lit_vs.fx.vert",
-	"ad_model_unlit_ps.fx.frag",
-	"ad_model_unlit_vs.fx.vert",
-	"ad_sprite_distortion_vs.fx.vert",
-	"ad_sprite_lit_vs.fx.vert",
-	"ad_sprite_unlit_vs.fx.vert",
-	"model_distortion_ps.fx.frag",
-	"model_distortion_vs.fx.vert",
-	"model_lit_ps.fx.frag",
-	"model_lit_vs.fx.vert",
-	"model_unlit_ps.fx.frag",
-	"model_unlit_vs.fx.vert",
-	"sprite_distortion_vs.fx.vert",
-	"sprite_lit_vs.fx.vert",
-	"sprite_unlit_vs.fx.vert",
-}
 
 local ShaderType = {
 	Unlit = 0,
@@ -255,8 +235,7 @@ $struct
 $source
 ]]
 
-local function genshader(name, type)
-	local fullname = path .. name
+local function genshader(fullname, type)
 	local s = gen(fullname)
 	local varying = gen_varying(s, efkmat.layout(ShaderType[type]))
 	local uniform = gen_uniform(s)
@@ -274,6 +253,8 @@ local function genshader(name, type)
 
 	for i, f in ipairs(func) do
 		f.imp = f.imp:gsub("texture%([%w_]+", texture.map)
+		f.imp = f.imp:gsub("vec([432])%(([%w-_.]+)%)", "vec%1_splat(%2)")
+		f.imp = f.imp:gsub("(VS_Output%s+Output%s+=)%s*[^;]+;", "%1 (VS_Output)0;")
 	end
 
 	local source = {}
@@ -298,17 +279,22 @@ local function genshader(name, type)
 end
 
 local function writefile(filename, text)
-	local f = assert(io.open(output_path .. filename, "wb"))
+	local f = assert(io.open(filename, "wb"))
 	f:write(text)
 	f:close()
 end
 
-local r = genshader("sprite_lit_vs.fx.vert", "Lit")
-writefile("lit_varying.def.sc", r.varying)
-writefile("vs_sprite_lit.sc", r.source)
+local input = arg[1]
+local output = arg[2]
+local shadertype = arg[3]
+local stage = arg[4]
 
-local r = genshader("model_lit_ps.fx.frag", "Lit")
-writefile("fs_model_lit.sc", r.source)
+local r = genshader(input, shadertype)
+if stage == "vs" and r.varying then
+	local vname = shadertype .. "_varying.def.sc"
+	local ppath = output:match "(.+[/\\]).+$"
+	writefile(ppath .. vname, r.varying)
+end
 
---local r = genshader("model_lit_vs.fx.vert", "Lit")
---writefile("vs_model_lit.sc", r.source)
+writefile(output, r.source)
+

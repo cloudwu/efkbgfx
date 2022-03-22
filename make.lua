@@ -90,6 +90,18 @@ lm:dll "efkbgfx" {
 }
 
 --------------------------------------
+lm:lua_dll "efkmat" {
+    includes = {
+        efklib_includes,
+    },
+    sources = {
+        "efkmatc/efkmat.cpp",
+    },
+    deps = "source_efklib",
+    bindir = "efkmatc",
+}
+
+--------------------------------------
 local bx_libname = "bx" .. name_suffix
 local bgfx_libname = "bgfx" .. name_suffix
 local bimg_libname = "bimg" .. name_suffix
@@ -103,6 +115,7 @@ lm:exe "example"{
     deps = {
         "efklib",
         "efkbgfx",
+        "efkmat",
     },
     includes = {
         alloca_file_includes[plat]:string(),
@@ -153,24 +166,58 @@ local platform_renderers = {
 }
 
 local cwd = fs.current_path()
-local example_shader_dir = fs.path "./examples/shaders"
+--local example_shader_dir = fs.path "./examples/shaders"
+local vulkan_shader_dir = cwd / "../Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader"
+local shader_output_dir = cwd / "examples/shaders"
+
+fs.create_directories(shader_output_dir)
+
 local shaderfiles = {
-    {
-        file = cwd / example_shader_dir / "vs_sprite_unlit.sc",
-        defines = {}
-    },
-    {
-        file = cwd / example_shader_dir / "fs_model_unlit.sc",
-        defines = {},
-    },
-    {
-        file = cwd / example_shader_dir / "vs_model.sc",
-        defines = {
-            "ENABLE_COLOR_TEXTURE=1",
-            "__INST__=" .. MaxInstanced,
+    sprite = {
+        Unlit = {
+            vs      = vulkan_shader_dir / "sprite_unlit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_sprite_unlit.bin",
+            fs      = vulkan_shader_dir / "model_unlit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_unlit.bin",
         },
-        output = cwd / example_shader_dir / "vs_model_unlit.bin",
-    }
+        Lit = {
+            -- vs      = vulkan_shader_dir / "sprite_lit_vs.fx.vert",
+            -- vs_out  = shader_output_dir / "vs_sprite_lit.bin",
+            -- fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
+            -- fs_out  = shader_output_dir / "fs_model_lit.bin",
+        },
+        BackDistortion = {
+            -- vs      = vulkan_shader_dir / "sprite_lit_vs.fx.vert",
+            -- vs_out  = shader_output_dir / "vs_sprite_lit.bin",
+            -- fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
+            -- fs_out  = shader_output_dir / "fs_model_lit.bin",
+            -- defines = {},
+        },
+        AdvancedUnlit = {
+
+        },
+        AdvancedLit = {
+
+        },
+        AdvancedBackDistortion = {
+
+        },
+    },
+    model = {
+        -- unlit = {
+        --     vs = vulkan_shader_dir / "fs_model_unlit.sc",
+        --     fs = "",
+        --     defines = {},
+        -- },
+        -- lit = {
+        --     vs = vulkan_shader_dir / "vs_model.sc",
+        --     fs = "",
+        --     defines = {
+        --         "ENABLE_COLOR_TEXTURE=1",
+        --         "__INST__=" .. MaxInstanced,
+        --     },
+        -- }
+    },
 }
 
 local shaderc = cwd / bgfxbin_dir / ("shaderc%s.exe"):format(name_suffix)
@@ -183,12 +230,23 @@ local function print_cfg(cfg)
     end
 end
 
-for _, sf in ipairs(shaderfiles) do
-    local f = sf.file
-    local output = sf.output or fs.path(f):replace_extension "bin":string()
+local function cvt2bgfxshader(input, output, shadertype, stage)
+    lm:build {
+        "$luamake", "lua", "efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage,
+        input = input:string(),
+        output = output:string(),
+    }
+end
+
+local function build_shader(input, output, defines, shadertype)
+    local bgfxsrc = output:parent_path() / (output:filename():replace_extension "sc")
+    local stage = bgfxsrc:string():match "([vfc]s)_"
+    cvt2bgfxshader(input, bgfxsrc, shadertype, stage)
+
+    local varying_path = bgfxsrc:parent_path() / shadertype .. "_varying.def.sc"
     local cfg = {
         renderer = platform_renderers[lm.os],
-        stage = f:string():match "([vfc]s)_",
+        stage = stage,
         plat = lm.os,
         optimizelevel = 3,
         debug = true,
@@ -196,15 +254,29 @@ for _, sf in ipairs(shaderfiles) do
             cwd / bgfxdir / "src",
             cwd / bgfx_example_dir / "common",
         },
-        defines = sf.defines,
-        input = f:string(),
-        output = output
+        defines = defines,
+        varying_path = varying_path:string(),
+        input = bgfxsrc:string(),
+        output = output:string(),
     }
 
-    --print_cfg(cfg)
+    print_cfg(cfg)
 
     local cmd = sc.gen_cmd(shaderc:string(), cfg)
-    --print(table.concat(cmd, " "))
+    print(table.concat(cmd, " "))
 
     lm:build(cmd)
+end
+
+for objtype, shaders in pairs(shaderfiles) do
+    print("object type:", objtype)
+    for st, shader in pairs(shaders) do
+        print("stage type:", st)
+        if shader.vs then
+            build_shader(shader.vs, shader.vs_out, shader.defines, st)
+        end
+        if shader.fs then
+            build_shader(shader.fs, shader.fs_out, shader.defines, st)
+        end
+    end
 end
