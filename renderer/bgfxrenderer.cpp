@@ -596,6 +596,9 @@ private:
 	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
 	TransientVertexBuffer* m_vertexBuffer = nullptr;
 	Shader* m_currentShader = nullptr;
+	Effekseer::Backend::TextureRef m_background = nullptr;
+	Effekseer::Backend::TextureRef m_depth = nullptr;
+	EffekseerRenderer::DepthReconstructionParameter m_depthParam;
 	int32_t m_squareMaxCount = 0;
 	int32_t m_indexBufferStride = 2;
 	bgfx_view_id_t m_viewid = 0;
@@ -605,6 +608,20 @@ private:
 	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
 
+	Effekseer::Backend::TextureRef GetExternalTexture(int type, void *param) const {
+		if (m_initArgs.texture_get == nullptr)
+			return nullptr;
+		bgfx_texture_handle_t h = m_initArgs.texture_get(type, param, m_initArgs.ud);
+		if (h.idx == UINT16_MAX)
+			return nullptr;
+		return Effekseer::MakeRefPtr<Texture>(this, h);
+	}
+	void RemoveExternalTexture(Effekseer::Backend::TextureRef t) const {
+		if (t == nullptr)
+			return;
+		auto h = t.DownCast<Texture>()->RemoveInterface();
+		m_initArgs.texture_unload(h, m_initArgs.ud);
+	}
 	//! because gleDrawElements has only index offset
 	int32_t GetIndexSpriteCount() const {
 		int vsSize = EffekseerRenderer::GetMaximumVertexSizeInAllTypes() * m_squareMaxCount * 4;
@@ -847,6 +864,8 @@ public:
 	}
 	~RendererImplemented() {
 		GetImpl()->DeleteProxyTextures(this);
+		RemoveExternalTexture(m_background);
+		RemoveExternalTexture(m_depth);
 
 		ES_SAFE_DELETE(m_distortingCallback);
 		ES_SAFE_DELETE(m_standardRenderer);
@@ -953,6 +972,21 @@ public:
 		ES_SAFE_DELETE(m_distortingCallback);
 		m_distortingCallback = callback;
 	}
+	const Effekseer::Backend::TextureRef& GetBackground() override {
+		if (m_background != nullptr)
+			return m_background;
+		m_background = GetExternalTexture(TEXTURE_BACKGROUND, nullptr);
+		return m_background;
+	}
+
+	void GetDepth(Effekseer::Backend::TextureRef& texture, EffekseerRenderer::DepthReconstructionParameter& reconstructionParam) override {
+		if (m_depth != nullptr) {
+			m_depth = GetExternalTexture(TEXTURE_DEPTH, (void *)&m_depthParam);
+		}
+		texture = m_depth;
+		reconstructionParam = m_depthParam;
+	}
+
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader>* GetStandardRenderer() {
 		return m_standardRenderer;
 	}
