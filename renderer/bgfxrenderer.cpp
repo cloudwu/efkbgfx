@@ -99,6 +99,9 @@ public:
 		m_handle.idx = UINT16_MAX;
 		return ret;
 	}
+	void ReplaceInterface(bgfx_texture_handle_t handle) {
+		m_handle = handle;
+	}
 };
 
 class GraphicsDevice;
@@ -598,7 +601,6 @@ private:
 	Shader* m_currentShader = nullptr;
 	Effekseer::Backend::TextureRef m_background = nullptr;
 	Effekseer::Backend::TextureRef m_depth = nullptr;
-	EffekseerRenderer::DepthReconstructionParameter m_depthParam;
 	int32_t m_squareMaxCount = 0;
 	int32_t m_indexBufferStride = 2;
 	bgfx_view_id_t m_viewid = 0;
@@ -608,19 +610,12 @@ private:
 	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
 
-	Effekseer::Backend::TextureRef GetExternalTexture(int type, void *param) const {
-		if (m_initArgs.texture_get == nullptr)
-			return nullptr;
-		bgfx_texture_handle_t h = m_initArgs.texture_get(type, param, m_initArgs.ud);
-		if (h.idx == UINT16_MAX)
-			return nullptr;
-		return Effekseer::MakeRefPtr<Texture>(this, h);
-	}
-	void RemoveExternalTexture(Effekseer::Backend::TextureRef t) const {
+	const Effekseer::Backend::TextureRef & GetExternalTexture(Effekseer::Backend::TextureRef &t, int type, void *param) const {
 		if (t == nullptr)
-			return;
-		auto h = t.DownCast<Texture>()->RemoveInterface();
-		m_initArgs.texture_unload(h, m_initArgs.ud);
+			return t;
+		bgfx_texture_handle_t h = m_initArgs.texture_get(type, param, m_initArgs.ud);
+		t.DownCast<Texture>()->ReplaceInterface(h);
+		return t;
 	}
 	//! because gleDrawElements has only index offset
 	int32_t GetIndexSpriteCount() const {
@@ -853,6 +848,13 @@ private:
 		SetPixelConstantBuffer(m_shaders);
 		return true;
 	}
+	void InitTextures(struct InitArgs *init) {
+		if (init->texture_get == nullptr)
+			return;
+		bgfx_texture_handle_t invalid = BGFX_INVALID_HANDLE;
+		m_background = Effekseer::MakeRefPtr<Texture>(this, invalid);
+		m_depth = Effekseer::MakeRefPtr<Texture>(this, invalid);
+	}
 public:
 	RendererImplemented() {
 		m_device = Effekseer::MakeRefPtr<GraphicsDevice>(this);
@@ -864,8 +866,6 @@ public:
 	}
 	~RendererImplemented() {
 		GetImpl()->DeleteProxyTextures(this);
-		RemoveExternalTexture(m_background);
-		RemoveExternalTexture(m_depth);
 
 		ES_SAFE_DELETE(m_distortingCallback);
 		ES_SAFE_DELETE(m_standardRenderer);
@@ -885,6 +885,7 @@ public:
 		if (!InitShaders(init)) {
 			return false;
 		}
+		InitTextures(init);
 		InitVertexLayoutModel();
 		m_viewid = init->viewid;
 		m_squareMaxCount = init->squareMaxCount;
@@ -973,18 +974,11 @@ public:
 		m_distortingCallback = callback;
 	}
 	const Effekseer::Backend::TextureRef& GetBackground() override {
-		if (m_background != nullptr)
-			return m_background;
-		m_background = GetExternalTexture(TEXTURE_BACKGROUND, nullptr);
-		return m_background;
+		return GetExternalTexture(m_background, TEXTURE_BACKGROUND, nullptr);
 	}
 
 	void GetDepth(Effekseer::Backend::TextureRef& texture, EffekseerRenderer::DepthReconstructionParameter& reconstructionParam) override {
-		if (m_depth != nullptr) {
-			m_depth = GetExternalTexture(TEXTURE_DEPTH, (void *)&m_depthParam);
-		}
-		texture = m_depth;
-		reconstructionParam = m_depthParam;
+		texture = GetExternalTexture(m_depth, TEXTURE_DEPTH, (void *)&reconstructionParam);
 	}
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader>* GetStandardRenderer() {
