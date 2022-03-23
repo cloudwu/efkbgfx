@@ -181,42 +181,73 @@ local shaderfiles = {
             fs_out  = shader_output_dir / "fs_model_unlit.bin",
         },
         Lit = {
-            -- vs      = vulkan_shader_dir / "sprite_lit_vs.fx.vert",
-            -- vs_out  = shader_output_dir / "vs_sprite_lit.bin",
-            -- fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
-            -- fs_out  = shader_output_dir / "fs_model_lit.bin",
+            vs      = vulkan_shader_dir / "sprite_lit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_sprite_lit.bin",
+            fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_lit.bin",
         },
         BackDistortion = {
-            -- vs      = vulkan_shader_dir / "sprite_lit_vs.fx.vert",
-            -- vs_out  = shader_output_dir / "vs_sprite_lit.bin",
-            -- fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
-            -- fs_out  = shader_output_dir / "fs_model_lit.bin",
-            -- defines = {},
+            vs      = vulkan_shader_dir / "sprite_distortion_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_sprite_distortion.bin",
+            fs      = vulkan_shader_dir / "model_distortion_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_distortion.bin",
         },
         AdvancedUnlit = {
-
+            vs      = vulkan_shader_dir / "ad_sprite_unlit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_sprite_unlit.bin",
+            fs      = vulkan_shader_dir / "ad_model_unlit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_unlit.bin",
         },
         AdvancedLit = {
-
+            vs      = vulkan_shader_dir / "ad_sprite_lit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_sprite_lit.bin",
+            fs      = vulkan_shader_dir / "ad_model_lit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_lit.bin",
         },
         AdvancedBackDistortion = {
-
+            vs      = vulkan_shader_dir / "ad_sprite_distortion_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_sprite_distortion.bin",
+            fs      = vulkan_shader_dir / "ad_model_distortion_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_distortion.bin",
         },
     },
     model = {
-        -- unlit = {
-        --     vs = vulkan_shader_dir / "fs_model_unlit.sc",
-        --     fs = "",
-        --     defines = {},
-        -- },
-        -- lit = {
-        --     vs = vulkan_shader_dir / "vs_model.sc",
-        --     fs = "",
-        --     defines = {
-        --         "ENABLE_COLOR_TEXTURE=1",
-        --         "__INST__=" .. MaxInstanced,
-        --     },
-        -- }
+        Unlit = {
+            vs      = vulkan_shader_dir / "model_unlit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_model_unlit.bin",
+            fs      = vulkan_shader_dir / "model_unlit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_unlit.bin",
+        },
+        Lit = {
+            vs      = vulkan_shader_dir / "model_lit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_model_lit.bin",
+            fs      = vulkan_shader_dir / "model_lit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_lit.bin",
+        },
+        BackDistortion = {
+            vs      = vulkan_shader_dir / "model_distortion_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_model_distortion.bin",
+            fs      = vulkan_shader_dir / "model_distortion_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_model_distortion.bin",
+        },
+        AdvancedUnlit = {
+            vs      = vulkan_shader_dir / "ad_model_unlit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_model_unlit.bin",
+            fs      = vulkan_shader_dir / "ad_model_unlit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_unlit.bin",
+        },
+        AdvancedLit = {
+            vs      = vulkan_shader_dir / "ad_model_lit_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_model_lit.bin",
+            fs      = vulkan_shader_dir / "ad_model_lit_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_lit.bin",
+        },
+        AdvancedBackDistortion = {
+            vs      = vulkan_shader_dir / "ad_model_distortion_vs.fx.vert",
+            vs_out  = shader_output_dir / "vs_ad_model_distortion.bin",
+            fs      = vulkan_shader_dir / "ad_model_distortion_ps.fx.frag",
+            fs_out  = shader_output_dir / "fs_ad_model_distortion.bin",
+        },
     },
 }
 
@@ -230,23 +261,31 @@ local function print_cfg(cfg)
     end
 end
 
-local function cvt2bgfxshader(input, output, shadertype, stage)
+local function cvt2bgfxshader(input, output, shadertype, stage, modeltype)
     lm:build {
-        "$luamake", "lua", "efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage,
+        "$luamake", "lua", "efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype,
         input = input:string(),
         output = output:string(),
     }
 end
 
-local function build_shader(input, output, defines, shadertype)
-    local bgfxsrc = output:parent_path() / (output:filename():replace_extension "sc")
-    local stage = bgfxsrc:string():match "([vfc]s)_"
-    cvt2bgfxshader(input, bgfxsrc, shadertype, stage)
+local files_built = {}
 
-    local varying_path = bgfxsrc:parent_path() / shadertype .. "_varying.def.sc"
+local function build_shader(input, output, defines, stagetype, shadertype, modeltype)
+    if files_built[input:string()] then
+        return
+    end
+
+    local bgfxsrc = output:parent_path() / (output:filename():replace_extension "sc")
+
+    files_built[input:string()] = bgfxsrc
+    cvt2bgfxshader(input, bgfxsrc, shadertype, stagetype, modeltype)
+
+    local varying_filename = ("%s_%s_varying.def.sc"):format(modeltype, shadertype)
+    local varying_path = bgfxsrc:parent_path() / varying_filename
     local cfg = {
         renderer = platform_renderers[lm.os],
-        stage = stage,
+        stage = stagetype,
         plat = lm.os,
         optimizelevel = 3,
         debug = true,
@@ -260,23 +299,17 @@ local function build_shader(input, output, defines, shadertype)
         output = output:string(),
     }
 
-    print_cfg(cfg)
+    --print_cfg(cfg)
 
     local cmd = sc.gen_cmd(shaderc:string(), cfg)
-    print(table.concat(cmd, " "))
+    --print(table.concat(cmd, " "))
 
     lm:build(cmd)
 end
 
-for objtype, shaders in pairs(shaderfiles) do
-    print("object type:", objtype)
+for modeltype, shaders in pairs(shaderfiles) do
     for st, shader in pairs(shaders) do
-        print("stage type:", st)
-        if shader.vs then
-            build_shader(shader.vs, shader.vs_out, shader.defines, st)
-        end
-        if shader.fs then
-            build_shader(shader.fs, shader.fs_out, shader.defines, st)
-        end
+        build_shader(shader.vs, shader.vs_out, shader.defines, "vs", st, modeltype)
+        build_shader(shader.fs, shader.fs_out, shader.defines, "fs", st, modeltype)
     end
 end
