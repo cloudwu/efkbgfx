@@ -127,16 +127,10 @@ public:
 };
 
 static int
-llayout(lua_State *L) {
-	int t = luaL_checkinteger(L, 1);
-	if (t < (int) EffekseerRenderer::RendererShaderType::Unlit || t > (int)EffekseerRenderer::RendererShaderType::AdvancedBackDistortion) {
-		luaL_error(L, "Invalid shader type");
-	}
-	VertexLayoutRef v = EffekseerRenderer::GetVertexLayout(Effekseer::MakeRefPtr<GraphicsDevice>(), (EffekseerRenderer::RendererShaderType)t).DownCast<VertexLayout>();
-	const auto &elements = v->GetElements();
-	int n = elements.size();
-	lua_createtable(L, n, 0);
-	for (int i = 0; i < n; i++) {
+push_layouts(lua_State *L, const Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement>& elements){
+	size_t n = elements.size();
+	lua_createtable(L, (int)n, 0);
+	for (size_t i = 0; i < n; i++) {
 		lua_newtable(L);
 		const auto &e = elements[i];
 		switch (e.Format) {
@@ -174,6 +168,31 @@ llayout(lua_State *L) {
 	return 1;
 }
 
+static int
+llayout(lua_State *L) {
+	lua_Integer t = luaL_checkinteger(L, 1);
+	if (t < (lua_Integer) EffekseerRenderer::RendererShaderType::Unlit || t > (lua_Integer)EffekseerRenderer::RendererShaderType::AdvancedBackDistortion) {
+		luaL_error(L, "Invalid shader type");
+	}
+	VertexLayoutRef v = EffekseerRenderer::GetVertexLayout(Effekseer::MakeRefPtr<GraphicsDevice>(), (EffekseerRenderer::RendererShaderType)t).DownCast<VertexLayout>();
+	const auto &elements = v->GetElements();
+	return push_layouts(L, elements);
+}
+
+static Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement> g_model_layouts = {
+	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Pos", 	 "POSITION",0},
+	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Normal",  "NORMAL", 	0},
+	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Binormal","NORMAL", 	1},
+	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Tangent", "NORMAL", 	2},
+	{Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT, 		"Input_UV", 	"TEXCOORD", 0},
+	{Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM, 	"Input_Color",	"NORMAL", 	3},
+};
+
+static int
+lmodel_layout(lua_State *L){
+	return push_layouts(L, g_model_layouts);
+}
+
 extern "C" {
 
 LUAMOD_API int
@@ -182,6 +201,7 @@ luaopen_efkmat(lua_State *L) {
 	luaL_Reg l[] = {
 		{ "load", lloadMat },
 		{ "layout", llayout },
+		{ "model_layout", lmodel_layout},
 		{ NULL, NULL },
 	};
 	luaL_newlib(L, l);

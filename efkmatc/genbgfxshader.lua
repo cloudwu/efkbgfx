@@ -2,8 +2,6 @@ package.cpath = "efkmatc/?.dll;./?.dll"
 
 local efkmat = require "efkmat"
 
-
-
 local ShaderType = {
 	Unlit = 0,
 	Lit = 1,
@@ -124,70 +122,89 @@ local function gen(filename)
 	return shader
 end
 
-local SemanticNormal = {
-	"COLOR0",
-	"NORMAL",
-	"TANGENT",
-	"BITANGENT",
-	"COLOR1",
-	"COLOR2",
-	"COLOR3",
+local SPRITE_SEMANTIC<const> = {
+	POSITION0 	= {"a_position", 	"POSITION"},
+	TEXCOORD0 	= {"a_texcoord0", 	"TEXCOORD0"},
+	NORMAL0 	= {"a_color0", 		"COLOR0"},
+	NORMAL1 	= {"a_normal",		"NORMAL"},
+	NORMAL2 	= {"a_tangent", 	"TANGENT"},
+	TEXCOORD1	= {"a_texcoord1",	"TEXCOORD1"},
+	TEXCOORD2	= {"a_texcoord2",	"TEXCOORD2"},
+	TEXCOORD3	= {"a_texcoord3",	"TEXCOORD3"},
+	TEXCOORD4	= {"a_texcoord4",	"TEXCOORD4"},
+	TEXCOORD5	= {"a_texcoord5",	"TEXCOORD5"},
+	TEXCOORD6	= {"a_texcoord6",	"TEXCOORD6"},
 }
 
-local function gen_varying(s, layout)
-	local input = {}
-	local output = {}
-	local input_name = {}
-	local input_ps = {}
-	local output_name = {}
+local MODEL_SEMANTIC<const> = {
+	POSITION0 	= {"a_position", 	"POSITION"},
+	TEXCOORD0 	= {"a_texcoord0", 	"TEXCOORD0"},
+	NORMAL0 	= {"a_normal", 		"NORMAL"},
+	NORMAL1 	= {"a_bitangent",	"BITANGENT"},
+	NORMAL2 	= {"a_tangent", 	"TANGENT"},
+	NORMAL3 	= {"a_color0", 		"COLOR0"},
+}
+
+local VAYRING_pat = "%s %s : %s;"
+
+local function load_vs_varying(s, shadertype, modeltype)
+	local input, output = {}, {}
+	local input_names, output_names = {}, {}
 	local map = {}
-	local map_ps = {}
-	local isPS = false
+	local layout = modeltype == "model" and efkmat.model_layout() or efkmat.layout(ShaderType[shadertype])
+	local mapper = modeltype == "model" and MODEL_SEMANTIC or SPRITE_SEMANTIC
+
 	for i, v in ipairs(s.layout) do
 		local location = v.id + 1
 		if v.inout == "in" then
 			local shader_layout = layout[location]
-			local type = shader_layout.SemanticName
-			if type == "NORMAL" then
-				type = assert(SemanticNormal[shader_layout.SemanticIndex + 1])
-			elseif type == "TEXCOORD" then
-				type = type .. shader_layout.SemanticIndex
-			end
-			local name = "a_" .. type:lower()
+			local m = mapper[shader_layout.SemanticName .. shader_layout.SemanticIndex]
+			local name, type = m[1], m[2]
 			map[v.name] = name
-			input[location] = string.format("%s %s : %s;", v.type, name, type)
-			input_name[location] = name
-			local psname = "v_" .. v.name:match "Input_(.+)"
-			input_ps[location] = psname
-			map_ps[v.name] = psname
+			input[location] = VAYRING_pat:format(v.type, name, type)
+			input_names[location] = name
 		else
 			assert(v.inout == "out")
-			if v.name == "_entryPointOutput" then -- It's ps
-				isPS = true
-			else
-				local name = v.name:gsub("_entryPointOutput_", "v_")
-				map[v.name] = name
-				output[location] = string.format("%s %s : TEXCOORD%d;", v.type, name, v.id)
-				output_name[location] = name
-			end
+			local name = v.name:gsub("_entryPointOutput_", "v_")
+			map[v.name] = name
+			output[location] = VAYRING_pat:format(v.type, name, "TEXCOORD" .. v.id)
+			output_names[location] = name
 		end
 	end
 
-	local varying = {}
-	varying.input = table.concat(input, "\n")
-	varying.output = table.concat(output, "\n")
-	varying.map = map
-	if isPS then
-		varying.header = string.format("$input %s",	table.concat(input_ps, ","))
-		for k,v in pairs(map_ps) do
-			map[k] = v
+	return {
+		file	= table.concat(input, "\n") .. "\n" .. table.concat(output, "\n"),
+		map		= map,
+		header 	= ("$input %s\n$output %s"):format(
+				table.concat(input_names, " "), table.concat(output_names, " "))
+	}
+end
+
+local function load_fs_varying(s)
+	local input_names = {}
+	local map = {}
+	for i, v in ipairs(s.layout) do
+		local location = v.id + 1
+		if v.inout == "in" then
+			local sn = v.name:match "Input_([%w_]+)"
+			local name = "v_" .. sn
+			map[v.name] = name
+			input_names[location] = name
 		end
-	else
-		varying.header = string.format("$input %s\n$output %s",
-			table.concat(input_name, ","), table.concat(output_name, ","))
 	end
 
-	return varying
+	return {
+		map = map,
+		header = "$input " .. table.concat(input_names, " ")
+	}
+end
+
+local function gen_varying(s, stagetype, shadertype, modeltype)
+	if stagetype == "vs" then
+		return load_vs_varying(s, shadertype, modeltype)
+	end
+
+	return load_fs_varying(s)
 end
 
 local function gen_uniform(s)
@@ -236,9 +253,9 @@ $struct
 $source
 ]]
 
-local function genshader(fullname, type)
+local function genshader(fullname, stagetype, type, modeltype)
 	local s = gen(fullname)
-	local varying = gen_varying(s, efkmat.layout(ShaderType[type]))
+	local varying = gen_varying(s, stagetype, type, modeltype)
 	local uniform = gen_uniform(s)
 	local texture = gen_texture(s)
 
@@ -315,7 +332,7 @@ local function genshader(fullname, type)
 				}
 
 				for _, pat in ipairs(pats) do
-					f.imp = f.imp:gsub(pat, ("mul(%%1, %s)"):format(rv))
+					f.imp = f.imp:gsub(pat, ("mul(%s, %%1)"):format(rv))
 				end
 			end
 
@@ -342,7 +359,7 @@ local function genshader(fullname, type)
 			struct = table.concat(struct, "\n\n"),
 			source = table.concat(source, "\n\n"),
 		}),
-		varying = varying.input .. "\n" .. varying.output,
+		varying = varying.file,
 	}
 end
 
@@ -356,12 +373,15 @@ local input = arg[1]
 local output = arg[2]
 local shadertype = arg[3]
 local stage = arg[4]
+local modeltype = arg[5]
 
-local r = genshader(input, shadertype)
-if stage == "vs" and r.varying then
-	local vname = shadertype .. "_varying.def.sc"
+
+
+local r = genshader(input, stage, shadertype, modeltype)
+if r.varying then
 	local ppath = output:match "(.+[/\\]).+$"
-	writefile(ppath .. vname, r.varying)
+	local outputVaryingFile = ("%s%s_varying.def.sc"):format(ppath, shadertype)
+	writefile(outputVaryingFile, r.varying)
 end
 
 writefile(output, r.source)
