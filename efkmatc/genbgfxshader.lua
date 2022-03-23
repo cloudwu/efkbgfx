@@ -380,7 +380,7 @@ local modeltype = arg[5]
 local r = genshader(input, stage, shadertype, modeltype)
 if r.varying then
 	local ppath = output:match "(.+[/\\]).+$"
-	local outputVaryingFile = ("%s%s_varying.def.sc"):format(ppath, shadertype)
+	local outputVaryingFile = ("%s/%s_%s_varying.def.sc"):format(ppath, modeltype, shadertype)
 	writefile(outputVaryingFile, r.varying)
 end
 
