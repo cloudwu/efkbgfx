@@ -214,7 +214,8 @@ local function gen_texture(s)
 	for i, item in ipairs(s.texture) do
 		local name = item.name:match "_%w+$"
 		table.insert(texture, string.format("SAMPLER2D (s%s,%d);", name, item.binding - 1))
-		map["texture("..item.name] = "texture2D(s"..name
+		item.new_name = "s" .. name
+		map["texture("..item.name] = "texture2D("..item.new_name
 	end
 	return {
 		texture = table.concat(texture, "\n"),
@@ -226,7 +227,7 @@ local shader_temp=[[
 $header
 
 #include <bgfx_shader.sh>
-
+#include "defines.sh"
 $uniform
 $texture
 
@@ -246,15 +247,82 @@ local function genshader(fullname, type)
 	main = main:gsub("_entryPointOutput", "gl_FragColor")
 	func.main.imp = main
 
-	local u = func._main.imp
-	u = u:gsub("[%w_]+", uniform.map)
-	u = u:gsub("[%w_]+%.[%w_]+", uniform.map)
-	func._main.imp = u
-
 	for i, f in ipairs(func) do
-		f.imp = f.imp:gsub("texture%([%w_]+", texture.map)
-		f.imp = f.imp:gsub("vec([432])%(([%w-_.]+)%)", "vec%1_splat(%2)")
+		-- uniform
+		f.imp = f.imp:gsub("[%w_]+", uniform.map)
+		f.imp = f.imp:gsub("[%w_]+%.[%w_]+", uniform.map)
+
+		--texture
+		f.desc = f.desc:gsub("sampler2D", "struct BgfxSampler2D")
+		f.imp = f.imp:gsub("texture%([%w_]+", function(m)
+			local n = texture.map[m]
+			if n then
+				return n
+			end
+
+			local tn = m:match "%(([%w_]+)"
+			if f.desc:match(tn) == nil then
+				error(("texture name not match:%s"):format(m))
+			end
+			return "texture2D(" .. tn
+		end)
+
+		for _, t in ipairs(s.texture) do
+			f.imp = f.imp:gsub(t.name, t.new_name)
+		end
+
+		--shader dependent code
+		do
+			local tangentTransFmt = ("mat3(vec3(Input.WorldT),vec3(Input.WorldB),vec3(Input.WorldN))"):gsub("%(", "%%s*%%(")
+			tangentTransFmt = tangentTransFmt:gsub("%)", "%%s*%%)")
+			tangentTransFmt = tangentTransFmt:gsub(",", "%%s*,%%s*")
+			tangentTransFmt = tangentTransFmt .. "%s*%*%s*([%w+_]+)"
+			f.imp = f.imp:gsub(tangentTransFmt, "mul(mtxFromCols(Input.WorldT, Input.WorldB, Input.WorldN), %1)")
+		end
+
+		do
+			local vec_pat = "vec([432])(%b())"
+			local vec_handler
+			vec_handler = function (m1, m2)
+				m2 = m2:gsub(vec_pat, vec_handler)
+				local pat = "vec%s_splat%s"
+				-- for number, like: vec3(0.5e-7) or vec3(pow(x, 0.5))
+				if m2:match "^%([-%w_.]+%)$" or m2:match "^%([-%w_.]+%b()%)$" then
+					return pat:format(m1, m2)
+				end
+
+				--check no function call and parameter more than 1
+				if (not ((m2:match "[%w_]+%b()%s*,") or m2:match ",%s*[%w_]+%b()")) and (not m2:find ",") then
+					return pat:format(m1, m2)
+				end
+				return ("vec%s%s"):format(m1, m2)
+			end
+
+			f.imp = f.imp:gsub(vec_pat, vec_handler)
+		end
+		
 		f.imp = f.imp:gsub("(VS_Output%s+Output%s+=)%s*[^;]+;", "%1 (VS_Output)0;")
+
+		do
+			local pat1 = "([%w_.]+)"
+			local pat2 = "(%b())"
+			local mul = "%s*%*%s*"
+
+			local function matrixmul(rv)
+				local pats = {
+					pat1 .. mul .. rv,
+					pat2 .. mul .. rv,
+				}
+
+				for _, pat in ipairs(pats) do
+					f.imp = f.imp:gsub(pat, ("mul(%%1, %s)"):format(rv))
+				end
+			end
+
+			matrixmul "u_mCameraProj"
+			matrixmul "u_mCamera"
+			matrixmul "mModel"
+		end
 	end
 
 	local source = {}
