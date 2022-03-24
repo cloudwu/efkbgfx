@@ -1228,7 +1228,9 @@ public:
 		return Effekseer::MakeRefPtr<Texture>(this, handle);
 	}
 	void ReleaseTexture(Texture *t) const {
-		BGFX(destroy_texture)(t->RemoveInterface());
+		bgfx_texture_handle_t h = t->RemoveInterface();
+		if (BGFX_HANDLE_IS_VALID(h))
+			BGFX(destroy_texture)(h);
 	}
 	Effekseer::Backend::IndexBufferRef CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) const {
 		int s = (stride == Effekseer::Backend::IndexBufferStrideType::Stride4) ? 4 : 2;
