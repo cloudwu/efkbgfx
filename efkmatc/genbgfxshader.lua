@@ -1,28 +1,6 @@
+package.cpath = "efkmatc/?.dll;./?.dll"
+
 local efkmat = require "efkmat"
-
-local path = "../Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader/"
-local output_path = "examples/shaders/"
-
-local filelist = {
-	"ad_model_distortion_ps.fx.frag",
-	"ad_model_distortion_vs.fx.vert",
-	"ad_model_lit_ps.fx.frag",
-	"ad_model_lit_vs.fx.vert",
-	"ad_model_unlit_ps.fx.frag",
-	"ad_model_unlit_vs.fx.vert",
-	"ad_sprite_distortion_vs.fx.vert",
-	"ad_sprite_lit_vs.fx.vert",
-	"ad_sprite_unlit_vs.fx.vert",
-	"model_distortion_ps.fx.frag",
-	"model_distortion_vs.fx.vert",
-	"model_lit_ps.fx.frag",
-	"model_lit_vs.fx.vert",
-	"model_unlit_ps.fx.frag",
-	"model_unlit_vs.fx.vert",
-	"sprite_distortion_vs.fx.vert",
-	"sprite_lit_vs.fx.vert",
-	"sprite_unlit_vs.fx.vert",
-}
 
 local ShaderType = {
 	Unlit = 0,
@@ -144,70 +122,89 @@ local function gen(filename)
 	return shader
 end
 
-local SemanticNormal = {
-	"COLOR0",
-	"NORMAL",
-	"TANGENT",
-	"BITANGENT",
-	"COLOR1",
-	"COLOR2",
-	"COLOR3",
+local SPRITE_SEMANTIC<const> = {
+	POSITION0 	= {"a_position", 	"POSITION"},
+	TEXCOORD0 	= {"a_texcoord0", 	"TEXCOORD0"},
+	NORMAL0 	= {"a_color0", 		"COLOR0"},
+	NORMAL1 	= {"a_normal",		"NORMAL"},
+	NORMAL2 	= {"a_tangent", 	"TANGENT"},
+	TEXCOORD1	= {"a_texcoord1",	"TEXCOORD1"},
+	TEXCOORD2	= {"a_texcoord2",	"TEXCOORD2"},
+	TEXCOORD3	= {"a_texcoord3",	"TEXCOORD3"},
+	TEXCOORD4	= {"a_texcoord4",	"TEXCOORD4"},
+	TEXCOORD5	= {"a_texcoord5",	"TEXCOORD5"},
+	TEXCOORD6	= {"a_texcoord6",	"TEXCOORD6"},
 }
 
-local function gen_varying(s, layout)
-	local input = {}
-	local output = {}
-	local input_name = {}
-	local input_ps = {}
-	local output_name = {}
+local MODEL_SEMANTIC<const> = {
+	POSITION0 	= {"a_position", 	"POSITION"},
+	TEXCOORD0 	= {"a_texcoord0", 	"TEXCOORD0"},
+	NORMAL0 	= {"a_normal", 		"NORMAL"},
+	NORMAL1 	= {"a_bitangent",	"BITANGENT"},
+	NORMAL2 	= {"a_tangent", 	"TANGENT"},
+	NORMAL3 	= {"a_color0", 		"COLOR0"},
+}
+
+local VAYRING_pat = "%s %s : %s;"
+
+local function load_vs_varying(s, shadertype, modeltype)
+	local input, output = {}, {}
+	local input_names, output_names = {}, {}
 	local map = {}
-	local map_ps = {}
-	local isPS = false
+	local layout = modeltype == "model" and efkmat.model_layout() or efkmat.layout(ShaderType[shadertype])
+	local mapper = modeltype == "model" and MODEL_SEMANTIC or SPRITE_SEMANTIC
+
 	for i, v in ipairs(s.layout) do
 		local location = v.id + 1
 		if v.inout == "in" then
 			local shader_layout = layout[location]
-			local type = shader_layout.SemanticName
-			if type == "NORMAL" then
-				type = assert(SemanticNormal[shader_layout.SemanticIndex + 1])
-			elseif type == "TEXCOORD" then
-				type = type .. shader_layout.SemanticIndex
-			end
-			local name = "a_" .. type:lower()
+			local m = mapper[shader_layout.SemanticName .. shader_layout.SemanticIndex]
+			local name, type = m[1], m[2]
 			map[v.name] = name
-			input[location] = string.format("%s %s : %s;", v.type, name, type)
-			input_name[location] = name
-			local psname = "v_" .. v.name:match "Input_(.+)"
-			input_ps[location] = psname
-			map_ps[v.name] = psname
+			input[location] = VAYRING_pat:format(v.type, name, type)
+			input_names[location] = name
 		else
 			assert(v.inout == "out")
-			if v.name == "_entryPointOutput" then -- It's ps
-				isPS = true
-			else
-				local name = v.name:gsub("_entryPointOutput_", "v_")
-				map[v.name] = name
-				output[location] = string.format("%s %s : TEXCOORD%d;", v.type, name, v.id)
-				output_name[location] = name
-			end
+			local name = v.name:gsub("_entryPointOutput_", "v_")
+			map[v.name] = name
+			output[location] = VAYRING_pat:format(v.type, name, "TEXCOORD" .. v.id)
+			output_names[location] = name
 		end
 	end
 
-	local varying = {}
-	varying.input = table.concat(input, "\n")
-	varying.output = table.concat(output, "\n")
-	varying.map = map
-	if isPS then
-		varying.header = string.format("$input %s",	table.concat(input_ps, ","))
-		for k,v in pairs(map_ps) do
-			map[k] = v
+	return {
+		file	= table.concat(input, "\n") .. "\n" .. table.concat(output, "\n"),
+		map		= map,
+		header 	= ("$input %s\n$output %s"):format(
+				table.concat(input_names, " "), table.concat(output_names, " "))
+	}
+end
+
+local function load_fs_varying(s)
+	local input_names = {}
+	local map = {}
+	for i, v in ipairs(s.layout) do
+		local location = v.id + 1
+		if v.inout == "in" then
+			local sn = v.name:match "Input_([%w_]+)"
+			local name = "v_" .. sn
+			map[v.name] = name
+			input_names[location] = name
 		end
-	else
-		varying.header = string.format("$input %s\n$output %s",
-			table.concat(input_name, ","), table.concat(output_name, ","))
 	end
 
-	return varying
+	return {
+		map = map,
+		header = "$input " .. table.concat(input_names, " ")
+	}
+end
+
+local function gen_varying(s, stagetype, shadertype, modeltype)
+	if stagetype == "vs" then
+		return load_vs_varying(s, shadertype, modeltype)
+	end
+
+	return load_fs_varying(s)
 end
 
 local function gen_uniform(s)
@@ -234,7 +231,8 @@ local function gen_texture(s)
 	for i, item in ipairs(s.texture) do
 		local name = item.name:match "_%w+$"
 		table.insert(texture, string.format("SAMPLER2D (s%s,%d);", name, item.binding - 1))
-		map["texture("..item.name] = "texture2D(s"..name
+		item.new_name = "s" .. name
+		map["texture("..item.name] = "texture2D("..item.new_name
 	end
 	return {
 		texture = table.concat(texture, "\n"),
@@ -246,7 +244,7 @@ local shader_temp=[[
 $header
 
 #include <bgfx_shader.sh>
-
+#include "defines.sh"
 $uniform
 $texture
 
@@ -255,10 +253,9 @@ $struct
 $source
 ]]
 
-local function genshader(name, type)
-	local fullname = path .. name
+local function genshader(fullname, stagetype, type, modeltype)
 	local s = gen(fullname)
-	local varying = gen_varying(s, efkmat.layout(ShaderType[type]))
+	local varying = gen_varying(s, stagetype, type, modeltype)
 	local uniform = gen_uniform(s)
 	local texture = gen_texture(s)
 
@@ -267,13 +264,82 @@ local function genshader(name, type)
 	main = main:gsub("_entryPointOutput", "gl_FragColor")
 	func.main.imp = main
 
-	local u = func._main.imp
-	u = u:gsub("[%w_]+", uniform.map)
-	u = u:gsub("[%w_]+%.[%w_]+", uniform.map)
-	func._main.imp = u
-
 	for i, f in ipairs(func) do
-		f.imp = f.imp:gsub("texture%([%w_]+", texture.map)
+		-- uniform
+		f.imp = f.imp:gsub("[%w_]+", uniform.map)
+		f.imp = f.imp:gsub("[%w_]+%.[%w_]+", uniform.map)
+
+		--texture
+		f.desc = f.desc:gsub("sampler2D", "struct BgfxSampler2D")
+		f.imp = f.imp:gsub("texture%([%w_]+", function(m)
+			local n = texture.map[m]
+			if n then
+				return n
+			end
+
+			local tn = m:match "%(([%w_]+)"
+			if f.desc:match(tn) == nil then
+				error(("texture name not match:%s"):format(m))
+			end
+			return "texture2D(" .. tn
+		end)
+
+		for _, t in ipairs(s.texture) do
+			f.imp = f.imp:gsub(t.name, t.new_name)
+		end
+
+		--shader dependent code
+		do
+			local tangentTransFmt = ("mat3(vec3(Input.WorldT),vec3(Input.WorldB),vec3(Input.WorldN))"):gsub("%(", "%%s*%%(")
+			tangentTransFmt = tangentTransFmt:gsub("%)", "%%s*%%)")
+			tangentTransFmt = tangentTransFmt:gsub(",", "%%s*,%%s*")
+			tangentTransFmt = tangentTransFmt .. "%s*%*%s*([%w+_]+)"
+			f.imp = f.imp:gsub(tangentTransFmt, "mul(mtxFromCols(Input.WorldT, Input.WorldB, Input.WorldN), %1)")
+		end
+
+		do
+			local vec_pat = "vec([432])(%b())"
+			local vec_handler
+			vec_handler = function (m1, m2)
+				m2 = m2:gsub(vec_pat, vec_handler)
+				local pat = "vec%s_splat%s"
+				-- for number, like: vec3(0.5e-7) or vec3(pow(x, 0.5))
+				if m2:match "^%([-%w_.]+%)$" or m2:match "^%([-%w_.]+%b()%)$" then
+					return pat:format(m1, m2)
+				end
+
+				--check no function call and parameter more than 1
+				if (not ((m2:match "[%w_]+%b()%s*,") or m2:match ",%s*[%w_]+%b()")) and (not m2:find ",") then
+					return pat:format(m1, m2)
+				end
+				return ("vec%s%s"):format(m1, m2)
+			end
+
+			f.imp = f.imp:gsub(vec_pat, vec_handler)
+		end
+		
+		f.imp = f.imp:gsub("(VS_Output%s+Output%s+=)%s*[^;]+;", "%1 (VS_Output)0;")
+
+		do
+			local pat1 = "([%w_.]+)"
+			local pat2 = "(%b())"
+			local mul = "%s*%*%s*"
+
+			local function matrixmul(rv)
+				local pats = {
+					pat1 .. mul .. rv,
+					pat2 .. mul .. rv,
+				}
+
+				for _, pat in ipairs(pats) do
+					f.imp = f.imp:gsub(pat, ("mul(%s, %%1)"):format(rv))
+				end
+			end
+
+			matrixmul "u_mCameraProj"
+			matrixmul "u_mCamera"
+			matrixmul "mModel"
+		end
 	end
 
 	local source = {}
@@ -293,22 +359,30 @@ local function genshader(name, type)
 			struct = table.concat(struct, "\n\n"),
 			source = table.concat(source, "\n\n"),
 		}),
-		varying = varying.input .. "\n" .. varying.output,
+		varying = varying.file,
 	}
 end
 
 local function writefile(filename, text)
-	local f = assert(io.open(output_path .. filename, "wb"))
+	local f = assert(io.open(filename, "wb"))
 	f:write(text)
 	f:close()
 end
 
-local r = genshader("sprite_lit_vs.fx.vert", "Lit")
-writefile("lit_varying.def.sc", r.varying)
-writefile("vs_sprite_lit.sc", r.source)
+local input = arg[1]
+local output = arg[2]
+local shadertype = arg[3]
+local stage = arg[4]
+local modeltype = arg[5]
 
-local r = genshader("model_lit_ps.fx.frag", "Lit")
-writefile("fs_model_lit.sc", r.source)
 
---local r = genshader("model_lit_vs.fx.vert", "Lit")
---writefile("vs_model_lit.sc", r.source)
+
+local r = genshader(input, stage, shadertype, modeltype)
+if r.varying then
+	local ppath = output:match "(.+[/\\]).+$"
+	local outputVaryingFile = ("%s/%s_%s_varying.def.sc"):format(ppath, modeltype, shadertype)
+	writefile(outputVaryingFile, r.varying)
+end
+
+writefile(output, r.source)
+

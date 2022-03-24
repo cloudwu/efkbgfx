@@ -49,6 +49,7 @@ public:
 			2048, DEF_VIEWID, inter,
 			EffekseerBgfxTest::ShaderLoad,
 			EffekseerBgfxTest::TextureLoad,
+			EffekseerBgfxTest::TextureGet,
 			EffekseerBgfxTest::TextureUnload,
 			nullptr
 		};
@@ -72,7 +73,8 @@ public:
 		m_efkRenderer->SetCameraMatrix(
 		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -159,36 +161,120 @@ private:
 		return NULL;
 	}
 
-	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
-		assert(mat == nullptr);
-		const char* shaderfile = nullptr;
-		if (strcmp(name, "sprite_unlit") == 0 /*||
-		// //TODO: just skip something not implement here
-		// 	strcmp(name, "sprite_lit") == 0 ||
-		// 	strcmp(name, "sprite_distortion") == 0 ||
-		// 	strcmp(name, "sprite_adv_unlit") == 0 ||
-		// 	strcmp(name, "sprite_adv_lit") == 0 ||
-		// 	strcmp(name, "sprite_adv_distortion") == 0*/ ){
+	static const char* find_shader_file(const char* name, const char* type){
+		if (strcmp(name, "sprite_unlit") == 0){
 			if (strcmp(type, "vs") == 0){
-				shaderfile = "shaders/vs_sprite_unlit.bin";
-			} else if (strcmp(type, "fs") == 0){
-				shaderfile = "shaders/fs_model_unlit.bin";
-			} else {
-				assert(false && "invalid shader type");
+				return "shaders/sprite_unlit_vs.fx.bin";
 			}
-		} else if (strcmp(name, "model_unlit") == 0) {
-			if (strcmp(type, "vs") == 0){
-				shaderfile = "shaders/vs_model_unlit.bin";
-			} else if (strcmp(type, "fs") == 0){
-				shaderfile = "shaders/fs_model_unlit.bin";
-			} else {
-				assert(false && "invalid shader type");
-			}
-		} else {
-			//assert(false && "need impl");
-			return BGFX_INVALID_HANDLE;
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_unlit_ps.fx.bin";
 		}
 
+		if	(strcmp(name, "sprite_lit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/sprite_lit_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_lit_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "sprite_distortion") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/sprite_distortion_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_distortion_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "sprite_adv_unlit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_sprite_unlit_vs.fx.bin";
+			}
+			
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_unlit_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "sprite_adv_lit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_sprite_lit_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_lit_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "sprite_adv_distortion") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_sprite_distortion_vs.fx.bin";
+			}
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_distortion_ps.fx.bin";
+		}
+
+		if (strcmp(name, "model_unlit") == 0) {
+			if (strcmp(type, "vs") == 0){
+				return "shaders/model_unlit_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_unlit_ps.fx.bin";
+		}
+		if	(strcmp(name, "model_lit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/model_lit_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_lit_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "model_distortion") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/model_distortion_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/model_distortion_ps.fx.bin";
+		}
+
+		if	(strcmp(name, "model_adv_unlit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_model_unlit_vs.fx.bin";
+			}
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_unlit_ps.fx.bin";
+		}
+		
+		if	(strcmp(name, "model_adv_lit") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_model_lit_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_lit_ps.fx.bin";
+			
+		}
+
+		if	(strcmp(name, "model_adv_distortion") == 0){
+			if (strcmp(type, "vs") == 0){
+				return "shaders/ad_model_distortion_vs.fx.bin";
+			}
+
+			assert(strcmp(type, "fs") == 0);
+			return "shaders/ad_model_distortion_ps.fx.bin";
+		}
+
+		assert(false && "invalid shader name and type name");
+		return nullptr;
+	}
+
+	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
+		assert(mat == nullptr);
+		const char* shaderfile = find_shader_file(name, type);
 		bgfx::ShaderHandle handle = bgfx::createShader(loadMem(entry::getFileReader(), shaderfile) );
 		bgfx::setName(handle, shaderfile);
 		
@@ -219,6 +305,12 @@ private:
 
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
 	}
+
+	static bgfx_texture_handle_t TextureGet(int texture_type, void *parm, void *ud){
+		assert(false && "not implement");
+		return {BGFX_INVALID_HANDLE};
+	}
+
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
 		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
