@@ -311,7 +311,7 @@ private:
 			Effekseer::ConvertUtf16ToUtf8(matpath, MAX_PATH, path);
 
 			Effekseer::MaterialFile materialFile;
-			if (!materialFile.Load((const uint8_t*)data.data(), size))	{
+			if (!materialFile.Load((const uint8_t*)data.data(), (uint32_t)size))	{
 				// Invalid material
 				return nullptr;
 			}
@@ -468,13 +468,14 @@ public:
 			}
 		}
 		bool Initialize(struct InitArgs *init) {
+			const uint32_t depthSlot[(int)EffekseerRenderer::RendererShaderType::Material] = {1, 2, 2, 6, 7, 7,};
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
-				// EffekseerRenderer::RendererShaderType::Lit,
-				// EffekseerRenderer::RendererShaderType::BackDistortion,
-				// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-				// EffekseerRenderer::RendererShaderType::AdvancedLit,
-				// EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+				EffekseerRenderer::RendererShaderType::Lit,
+				EffekseerRenderer::RendererShaderType::BackDistortion,
+				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				EffekseerRenderer::RendererShaderType::AdvancedLit,
+				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 			}) {
 				Shader * s = m_render->CreateShader(&m_render->m_modellayout);
 				int id = (int)t;
@@ -508,54 +509,65 @@ public:
 					m_render->LoadShader(NULL, shadername, "fs"))){
 					return false;
 				}
+
+#define UTEXTURE(uname, slotidx)	m_render->AddUniform(s, #uname, Shader::UniformType::Texture, slotidx);
+				UTEXTURE(s_colorTex, 				0);
+				UTEXTURE(s_backTex, 				1);
+				UTEXTURE(s_normalTex, 				1);
+				UTEXTURE(s_alphaTex, 				2);
+				UTEXTURE(s_uvDistortionTex, 		3);
+				UTEXTURE(s_blendTex, 				4);
+				UTEXTURE(s_blendAlphaTex, 			5);
+				UTEXTURE(s_blendUVDistortionTex, 	6);
+				UTEXTURE(s_depthTex, 	depthSlot[(int)t]);
+#undef UTEXTURE
 			}
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
-				// EffekseerRenderer::RendererShaderType::Lit,
-				// EffekseerRenderer::RendererShaderType::BackDistortion,
+				EffekseerRenderer::RendererShaderType::Lit,
+				EffekseerRenderer::RendererShaderType::BackDistortion,
 			}) {
 				Shader * s = m_shaders[(int)t];
 				typedef EffekseerRenderer::ModelRendererVertexConstantBuffer<MaxInstanced> VCB;
 				s->SetVertexConstantBufferSize(sizeof(VCB));
 #define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-					VUNIFORM("u_CameraProj", 	CameraMatrix)
-					VUNIFORM("u_Model", 		ModelMatrix)
-					VUNIFORM("u_ModelUV", 		ModelUV)
-					VUNIFORM("u_ModelColor", 	ModelColor)
-					VUNIFORM("u_LightDirection",LightDirection)
-					VUNIFORM("u_LightColor", 	LightColor)
-					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
-					VUNIFORM("u_UVInversed", 	UVInversed)
-					m_render->AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
+					VUNIFORM("u_mCameraProj", 	CameraMatrix)
+					VUNIFORM("u_mModel_Inst", 	ModelMatrix)
+					VUNIFORM("u_fUV", 			ModelUV)
+					VUNIFORM("u_fModelColor", 	ModelColor)
+					VUNIFORM("u_fLightDirection",LightDirection)
+					VUNIFORM("u_fLightColor", 	LightColor)
+					VUNIFORM("u_fLightAmbient", LightAmbientColor)
+					VUNIFORM("u_mUVInversed", 	UVInversed)
 #undef VUNIFORM
 			}
-// 			for (auto t : {
-// 				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-// 				EffekseerRenderer::RendererShaderType::AdvancedLit,
-// 				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
-// 			}) {
-// 				Shader * s = m_shaders[(int)t];
-// 				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
-// 				s->SetVertexConstantBufferSize(sizeof(VCB));
-// #define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-// 					VUNIFORM("u_Camera", CameraMatrix)
-// 					VUNIFORM("u_Model", ModelMatrix)
-// 					VUNIFORM("u_ModelUV", ModelUV)
-// 					VUNIFORM("u_ModelAlphaUV", ModelAlphaUV)
-// 					VUNIFORM("u_ModelUVDistortionUV", ModelUVDistortionUV)
-// 					VUNIFORM("u_ModelBlendUV", ModelBlendUV)
-// 					VUNIFORM("u_ModelBlendAlphaUV", ModelBlendAlphaUV)
-// 					VUNIFORM("u_ModelBlendUVDistortionUV", ModelBlendUVDistortionUV)
-// 					VUNIFORM("u_ModelFlipbookParameter", ModelFlipbookParameter)
-// 					VUNIFORM("u_ModelFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
-// 					VUNIFORM("u_ModelAlphaThreshold", ModelAlphaThreshold)
-// 					VUNIFORM("u_ModelColor", ModelColor)
-// 					VUNIFORM("u_LightDirection", LightDirection)
-// 					VUNIFORM("u_LightColor", LightColor)
-// 					VUNIFORM("u_LightAmbientColor", LightAmbientColor)
-// 					VUNIFORM("u_UVInversed", UVInversed)
-// #undef VUNIFORM
-//			}
+			for (auto t : {
+				EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+				EffekseerRenderer::RendererShaderType::AdvancedLit,
+				EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+			}) {
+				Shader * s = m_shaders[(int)t];
+				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
+				s->SetVertexConstantBufferSize(sizeof(VCB));
+#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+					VUNIFORM("u_mCameraProj", 		CameraMatrix)
+					VUNIFORM("u_mModel_Inst", 		ModelMatrix)
+					VUNIFORM("u_fUV", 				ModelUV)
+					VUNIFORM("u_fAlphaUV", 			ModelAlphaUV)
+					VUNIFORM("u_fUVDistortionUV", 	ModelUVDistortionUV)
+					VUNIFORM("u_fBlendUV", 			ModelBlendUV)
+					VUNIFORM("u_fBlendAlphaUV", 	ModelBlendAlphaUV)
+					VUNIFORM("u_fBlendUVDistortionUV", ModelBlendUVDistortionUV)
+					VUNIFORM("u_fFlipbookParameter", ModelFlipbookParameter)
+					VUNIFORM("u_fFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
+					VUNIFORM("u_fModelAlphaThreshold", 	ModelAlphaThreshold)
+					VUNIFORM("u_fModelColor", 		ModelColor)
+					VUNIFORM("u_fLightDirection", 	LightDirection)
+					VUNIFORM("u_fLightColor", 		LightColor)
+					VUNIFORM("u_fLightAmbient", 	LightAmbientColor)
+					VUNIFORM("u_mUVInversed", 		UVInversed)
+#undef VUNIFORM
+			}
 			m_render->SetPixelConstantBuffer(m_shaders);
 			return true;
 		}
@@ -735,55 +747,64 @@ private:
 	void SetPixelConstantBuffer(Shader *shaders[]) const {
 		for (auto t: {
 			EffekseerRenderer::RendererShaderType::Unlit,
-			// EffekseerRenderer::RendererShaderType::Lit,
-			// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-			// EffekseerRenderer::RendererShaderType::AdvancedLit,
+			EffekseerRenderer::RendererShaderType::Lit,
+			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			EffekseerRenderer::RendererShaderType::AdvancedLit,
 		}) {
 			int id = (int)t;
 			Shader * s = shaders[id];
 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBuffer));
-#define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, fname));
-			PUNIFORM(LightDirection)
-			PUNIFORM(LightColor)
-			PUNIFORM(LightAmbientColor)
-			PUNIFORM(FlipbookParam)
-			PUNIFORM(UVDistortionParam)
-			PUNIFORM(BlendTextureParam)
-			PUNIFORM(CameraFrontDirection)
-			PUNIFORM(FalloffParam)
-			PUNIFORM(EmmisiveParam)
-			PUNIFORM(EdgeParam)
-			PUNIFORM(SoftParticleParam)
-			PUNIFORM(UVInversedBack)
-			PUNIFORM(MiscFlags)
+#define PUNIFORM(uname, fname) AddUniform(s, #uname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, fname));
+			PUNIFORM(u_fLightDirection, 		LightDirection)
+			PUNIFORM(u_fLightColor, 			LightColor)
+			PUNIFORM(u_fLightAmbient, 			LightAmbientColor)
+			PUNIFORM(u_fFlipbookParameter, 		FlipbookParam)
+			PUNIFORM(u_fUVDistortionParameter, 	UVDistortionParam)
+			PUNIFORM(u_fBlendTextureParameter, 	BlendTextureParam)
+			PUNIFORM(u_fCameraFrontDirection, 	CameraFrontDirection)
+			PUNIFORM(u_fFalloffParameter, 		FalloffParam.Buffer)
+			PUNIFORM(u_fFalloffBeginColor,		FalloffParam.BeginColor)
+			PUNIFORM(u_fFalloffEndColor,  		FalloffParam.EndColor)
+			PUNIFORM(u_fEmissiveScaling, 		EmmisiveParam)
+			PUNIFORM(u_fEdgeParameter, 			EdgeParam)
+			PUNIFORM(u_softParticleParam, 		SoftParticleParam.softParticleParams)
+			PUNIFORM(u_reconstructionParam1, 	SoftParticleParam.reconstructionParam1)
+			PUNIFORM(u_reconstructionParam2, 	SoftParticleParam.reconstructionParam2)
+			PUNIFORM(u_mUVInversedBack, 		UVInversedBack)
+			PUNIFORM(u_miscFlags, 				MiscFlags)
 #undef PUNIFORM
 		}
-// 		for (auto t: {
-// 			EffekseerRenderer::RendererShaderType::BackDistortion,
-// 			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
-// 		}) {
-// 			int id = (int)t;
-// 			Shader * s = shaders[id];
-// 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
-// #define PUNIFORM(fname) AddUniform(s, "u_" #fname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
-// 			PUNIFORM(DistortionIntencity)
-// 			PUNIFORM(UVInversedBack)
-// 			PUNIFORM(FlipbookParam)
-// 			PUNIFORM(BlendTextureParam)
-// 			PUNIFORM(SoftParticleParam)
-// #undef PUNIFORM
-// 		}
+		for (auto t: {
+			EffekseerRenderer::RendererShaderType::BackDistortion,
+			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+		}) {
+			int id = (int)t;
+			Shader * s = shaders[id];
+			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
+#define PUNIFORM(uname, fname) AddUniform(s, #uname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
+			PUNIFORM(u_g_scale, 				DistortionIntencity)
+			PUNIFORM(u_mUVInversedBack, 		UVInversedBack)
+			PUNIFORM(u_fFlipbookParameter, 		FlipbookParam)
+			PUNIFORM(u_fUVDistortionParameter, 	UVDistortionParam)
+			PUNIFORM(u_fBlendTextureParameter, 	BlendTextureParam)
+			PUNIFORM(u_softParticleParam, 		SoftParticleParam.softParticleParams)
+			PUNIFORM(u_reconstructionParam1, 	SoftParticleParam.reconstructionParam1)
+			PUNIFORM(u_reconstructionParam2, 	SoftParticleParam.reconstructionParam2)
+#undef PUNIFORM
+		}
 	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
 		m_maxlayout.stride = 0;
+
+		const uint32_t depthSlot[(int)EffekseerRenderer::RendererShaderType::Material] = {1, 2, 2, 6, 7, 7,};
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
-			// EffekseerRenderer::RendererShaderType::Lit,
-			// EffekseerRenderer::RendererShaderType::BackDistortion,
-			// EffekseerRenderer::RendererShaderType::AdvancedUnlit,
-			// EffekseerRenderer::RendererShaderType::AdvancedLit,
-			// EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+			EffekseerRenderer::RendererShaderType::Lit,
+			EffekseerRenderer::RendererShaderType::BackDistortion,
+			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			EffekseerRenderer::RendererShaderType::AdvancedLit,
+			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
 		}) {
 			bgfx_vertex_layout_t layout;
 			GenVertexLayout(&layout, t);
@@ -793,6 +814,7 @@ private:
 			Shader * s = new Shader(this, BGFX(create_vertex_layout)(&layout));
 			int id = (int)t;
 			m_shaders[id] = s;
+			uint32_t depthTexSlot = 1;
 			const char *shadername = NULL;
 			switch (t) {
 			case EffekseerRenderer::RendererShaderType::Unlit :
@@ -823,15 +845,27 @@ private:
 				return false;
 			}
 			s->SetVertexConstantBufferSize(sizeof(EffekseerRenderer::StandardRendererVertexBuffer));
-			AddUniform(s, "u_Camera", Shader::UniformType::Vertex,
+			AddUniform(s, "u_mCamera", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[0]));
-			AddUniform(s, "u_CameraProj", Shader::UniformType::Vertex,
+			AddUniform(s, "u_mCameraProj", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, constantVSBuffer[1]));
-			AddUniform(s, "u_UVInversed", Shader::UniformType::Vertex,
+			AddUniform(s, "u_mUVInversed", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, uvInversed));
-			AddUniform(s, "u_vsFlipbookParameter", Shader::UniformType::Vertex,
+			AddUniform(s, "u_mflipbookParameter", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
-			AddUniform(s, "s_sampler_colorTex", Shader::UniformType::Texture, 0);
+
+#define UTEXTURE(uname, slotidx)	AddUniform(s, #uname, Shader::UniformType::Texture, slotidx);
+			//AddUniform(s, "s_colorTex", Shader::UniformType::Texture, 0);
+			UTEXTURE(s_colorTex, 				0);
+			UTEXTURE(s_backTex, 				1);
+			UTEXTURE(s_normalTex, 				1);
+			UTEXTURE(s_alphaTex, 				2);
+			UTEXTURE(s_uvDistortionTex, 		3);
+			UTEXTURE(s_blendTex, 				4);
+			UTEXTURE(s_blendAlphaTex, 			5);
+			UTEXTURE(s_blendUVDistortionTex, 	6);
+			UTEXTURE(s_blendUVDistortionTex, 	depthSlot[(int)t]);
+#undef UTEXTURE
 		}
 		SetPixelConstantBuffer(m_shaders);
 		return true;
@@ -1013,9 +1047,9 @@ public:
 	}
 	void SetTextures(Shader* shader, Effekseer::Backend::TextureRef* textures, int32_t count) {
 		for (int32_t ii=0; ii<count; ++ii){
-			auto tex = textures[ii].DownCast<EffekseerRendererBGFX::Texture>();
 			auto sampler = shader->m_samplers[ii];
 			if (BGFX_HANDLE_IS_VALID(sampler)){
+				auto tex = textures[ii].DownCast<EffekseerRendererBGFX::Texture>();
 				const auto &state = m_renderState->GetActiveState();
 				uint32_t flags = BGFX_SAMPLER_NONE;	// default min/mag/mip as 'linear' and uv address as 'repeat'
 				if (state.TextureFilterTypes[ii] == Effekseer::TextureFilterType::Nearest){
@@ -1092,9 +1126,9 @@ public:
 			}
 		}
 	}
-	void AddUniform(Shader *s, const char *name, Shader::UniformType type, int offset) const {
+	int AddUniform(Shader *s, const char *name, Shader::UniformType type, int offset) const {
 		if (!s->isValid())
-			return;
+			return -1;
 		int i;
 		int from = 0;
 		int	to = s->m_vsSize + s->m_fsSize;
@@ -1121,7 +1155,7 @@ public:
 		}
 
 		if (i >= to) {
-			return;
+			return -1;
 		}
 
 		switch(type) {
@@ -1141,6 +1175,8 @@ public:
 			s->m_samplers[offset] = s->m_uniform[i].handle;
 			break;
 		}
+
+		return i;
 	}
 
 	Effekseer::Backend::TextureRef CreateTexture(const Effekseer::Backend::TextureParameter& param, const Effekseer::CustomVector<uint8_t>& initialData) const {
