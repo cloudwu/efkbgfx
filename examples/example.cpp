@@ -72,7 +72,8 @@ public:
 		m_efkRenderer->SetCameraMatrix(
 		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
 
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -215,11 +216,11 @@ private:
 
 		if (strcmp(name, "model_unlit") == 0) {
 			if (strcmp(type, "vs") == 0){
-				return "shaders/vs_model_unlit.bin";
+				return "shaders/model_unlit_vs.fx.bin";
 			}
 
 			assert(strcmp(type, "fs") == 0);
-			return "shaders/fs_model_unlit.bin";
+			return "shaders/model_unlit_ps.fx.bin";
 		}
 		if	(strcmp(name, "model_lit") == 0){
 			if (strcmp(type, "vs") == 0){
@@ -227,7 +228,7 @@ private:
 			}
 
 			assert(strcmp(type, "fs") == 0);
-			return "shaders/fs_model_lit.bin";
+			return "shaders/model_lit_ps.fx.bin";
 		}
 
 		if	(strcmp(name, "model_distortion") == 0){

@@ -512,18 +512,6 @@ public:
 					m_render->LoadShader(NULL, shadername, "fs"))){
 					return false;
 				}
-
-#define UTEXTURE(uname, slotidx)	m_render->AddUniform(s, #uname, Shader::UniformType::Texture, slotidx);
-				UTEXTURE(s_colorTex, 				0);
-				UTEXTURE(s_backTex, 				1);
-				UTEXTURE(s_normalTex, 				1);
-				UTEXTURE(s_alphaTex, 				2);
-				UTEXTURE(s_uvDistortionTex, 		3);
-				UTEXTURE(s_blendTex, 				4);
-				UTEXTURE(s_blendAlphaTex, 			5);
-				UTEXTURE(s_blendUVDistortionTex, 	6);
-				UTEXTURE(s_depthTex, 	depthSlot[(int)t]);
-#undef UTEXTURE
 			}
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
@@ -572,6 +560,7 @@ public:
 #undef VUNIFORM
 			}
 			m_render->SetPixelConstantBuffer(m_shaders);
+			m_render->SetSamplers(m_shaders);
 			return true;
 		}
 		void BeginRendering(const Effekseer::ModelRenderer::NodeParameter& parameter, int32_t count, void* userData) override {
@@ -805,11 +794,43 @@ private:
 #undef PUNIFORM
 		}
 	}
+
+	void SetSamplers(Shader *shaders[]){
+		const uint32_t shaderCount = (uint32_t)EffekseerRenderer::RendererShaderType::Material;
+		
+		const int32_t alphaSlot[shaderCount] 			= {-1, -1, -1, 1, 2, 2};
+		const int32_t uvDistortionSlot[shaderCount]		= {-1, -1, -1, 2, 3, 3};
+		const int32_t blendSlot[shaderCount] 			= {-1, -1, -1, 3, 4, 4};
+		const int32_t blendAlphaSlot[shaderCount] 		= {-1, -1, -1, 4, 5, 5};
+		const int32_t blendUVDistortionSlot[shaderCount]= {-1, -1, -1, 5, 6, 6};
+		const int32_t depthSlot[shaderCount] 			= { 1,  2,  2, 6, 7, 7,};
+		for (auto t : {
+			EffekseerRenderer::RendererShaderType::Unlit,
+			EffekseerRenderer::RendererShaderType::Lit,
+			EffekseerRenderer::RendererShaderType::BackDistortion,
+			EffekseerRenderer::RendererShaderType::AdvancedUnlit,
+			EffekseerRenderer::RendererShaderType::AdvancedLit,
+			EffekseerRenderer::RendererShaderType::AdvancedBackDistortion,
+		}) {
+			const int32_t idx = (int)t;
+			auto s = shaders[idx];
+#define UTEXTURE(uname, slotidx)	AddUniform(s, #uname, Shader::UniformType::Texture, slotidx);
+			//AddUniform(s, "s_colorTex", Shader::UniformType::Texture, 0);
+			UTEXTURE(s_colorTex, 				0);
+			UTEXTURE(s_backTex, 				1);
+			UTEXTURE(s_normalTex, 				1);
+			UTEXTURE(s_alphaTex, 				alphaSlot[idx]);
+			UTEXTURE(s_uvDistortionTex, 		uvDistortionSlot[idx]);
+			UTEXTURE(s_blendTex, 				blendSlot[idx]);
+			UTEXTURE(s_blendAlphaTex, 			blendAlphaSlot[idx]);
+			UTEXTURE(s_blendUVDistortionTex, 	blendUVDistortionSlot[idx]);
+			UTEXTURE(s_depthTex, 				depthSlot[idx]);
+#undef UTEXTURE
+		}
+	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
 		m_maxlayout.stride = 0;
-
-		const uint32_t depthSlot[(int)EffekseerRenderer::RendererShaderType::Material] = {1, 2, 2, 6, 7, 7,};
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
 			EffekseerRenderer::RendererShaderType::Lit,
@@ -865,21 +886,9 @@ private:
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, uvInversed));
 			AddUniform(s, "u_mflipbookParameter", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
-
-#define UTEXTURE(uname, slotidx)	AddUniform(s, #uname, Shader::UniformType::Texture, slotidx);
-			//AddUniform(s, "s_colorTex", Shader::UniformType::Texture, 0);
-			UTEXTURE(s_colorTex, 				0);
-			UTEXTURE(s_backTex, 				1);
-			UTEXTURE(s_normalTex, 				1);
-			UTEXTURE(s_alphaTex, 				2);
-			UTEXTURE(s_uvDistortionTex, 		3);
-			UTEXTURE(s_blendTex, 				4);
-			UTEXTURE(s_blendAlphaTex, 			5);
-			UTEXTURE(s_blendUVDistortionTex, 	6);
-			UTEXTURE(s_blendUVDistortionTex, 	depthSlot[(int)t]);
-#undef UTEXTURE
 		}
 		SetPixelConstantBuffer(m_shaders);
+		SetSamplers(m_shaders);
 		return true;
 	}
 	void InitTextures(struct InitArgs *init) {
