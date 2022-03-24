@@ -27,7 +27,7 @@ find_files=$(wildcard $(dir)*.cpp)
 SOURCES:=$(foreach dir,$(SOURCE_DIRS),$(find_files))
 OBJECTS:=$(SOURCES:.cpp=.o)
 
-all : efkbgfx.dll efkmat.dll
+all : efkbgfx.dll efkmat.dll effekseer.dll
 
 $(OBJECTS) : %.o : %.cpp
 	$(CC) -c $(CFLAGS) -o $@ $^ $(EFFEKSEER_INC)
@@ -46,6 +46,8 @@ efkmat.dll : $(EFKMATC_SOURCES) libeffekseer.a
 efkbgfx.dll : $(EFKBGFX_SOURCES) libeffekseer.a
 	$(CC) -o $@ $(SHARED) $(CFLAGS) -DMaxInstanced=20 -o $@ $^ $(EFFEKSEER_INC) $(BGFX_INC) $(BGFX_LIBS) $(LIBS)
 
+effekseer.dll : luabinding/efkcallback.c
+	$(CC) -o $@ $(SHARED) -O2 -Wall $^ $(LUA_INC) $(LUA_LIB)
 
 clean :
-	$(RM) libeffekseer.a efkbgfx.dll efkmat.dll $(OBJECTS)
+	$(RM) libeffekseer.a efkbgfx.dll efkmat.dll effekseer.dll $(OBJECTS)
