@@ -49,6 +49,7 @@ public:
 			2048, DEF_VIEWID, inter,
 			EffekseerBgfxTest::ShaderLoad,
 			EffekseerBgfxTest::TextureLoad,
+			EffekseerBgfxTest::TextureGet,
 			EffekseerBgfxTest::TextureUnload,
 			nullptr
 		};
@@ -304,6 +305,12 @@ private:
 
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
 	}
+
+	static bgfx_texture_handle_t TextureGet(int texture_type, void *parm, void *ud){
+		assert(false && "not implement");
+		return {BGFX_INVALID_HANDLE};
+	}
+
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
 		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
