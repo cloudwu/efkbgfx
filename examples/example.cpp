@@ -161,112 +161,29 @@ private:
 		return NULL;
 	}
 
-	static const char* find_shader_file(const char* name, const char* type){
-		if (strcmp(name, "sprite_unlit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/sprite_unlit_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_unlit_ps.fx.bin";
+	static const char*
+	findShaderFile(const char* name, const char* type){
+#define CHECK_SHADER(_SHADERNAME, _VS, _FS)	if (strcmp(name, _SHADERNAME) == 0){	\
+			if (strcmp(type, "vs") == 0){\
+				return _VS;\
+			}\
+			assert(strcmp(type, "fs") == 0);\
+			return _FS;\
 		}
 
-		if	(strcmp(name, "sprite_lit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/sprite_lit_vs.fx.bin";
-			}
+		CHECK_SHADER("sprite_unlit", 			"shaders/sprite_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_lit", 				"shaders/sprite_lit_vs.fx.bin", 		"shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_distortion", 		"shaders/sprite_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_unlit", 		"shaders/ad_sprite_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_lit", 			"shaders/ad_sprite_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_distortion", 	"shaders/ad_sprite_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
 
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_lit_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "sprite_distortion") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/sprite_distortion_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_distortion_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "sprite_adv_unlit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_sprite_unlit_vs.fx.bin";
-			}
-			
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_unlit_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "sprite_adv_lit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_sprite_lit_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_lit_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "sprite_adv_distortion") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_sprite_distortion_vs.fx.bin";
-			}
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_distortion_ps.fx.bin";
-		}
-
-		if (strcmp(name, "model_unlit") == 0) {
-			if (strcmp(type, "vs") == 0){
-				return "shaders/model_unlit_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_unlit_ps.fx.bin";
-		}
-		if	(strcmp(name, "model_lit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/model_lit_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_lit_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "model_distortion") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/model_distortion_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/model_distortion_ps.fx.bin";
-		}
-
-		if	(strcmp(name, "model_adv_unlit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_model_unlit_vs.fx.bin";
-			}
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_unlit_ps.fx.bin";
-		}
-		
-		if	(strcmp(name, "model_adv_lit") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_model_lit_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_lit_ps.fx.bin";
-			
-		}
-
-		if	(strcmp(name, "model_adv_distortion") == 0){
-			if (strcmp(type, "vs") == 0){
-				return "shaders/ad_model_distortion_vs.fx.bin";
-			}
-
-			assert(strcmp(type, "fs") == 0);
-			return "shaders/ad_model_distortion_ps.fx.bin";
-		}
+		CHECK_SHADER("model_unlit", 			"shaders/model_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_lit", 				"shaders/model_lit_vs.fx.bin", 			"shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("model_distortion", 		"shaders/model_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("model_adv_unlit", 		"shaders/ad_model_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_adv_lit", 			"shaders/ad_model_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("model_adv_distortion", 	"shaders/ad_model_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
 
 		assert(false && "invalid shader name and type name");
 		return nullptr;
@@ -274,7 +191,7 @@ private:
 
 	static bgfx_shader_handle_t ShaderLoad(const char *mat, const char *name, const char *type, void *ud){
 		assert(mat == nullptr);
-		const char* shaderfile = find_shader_file(name, type);
+		const char* shaderfile = findShaderFile(name, type);
 		bgfx::ShaderHandle handle = bgfx::createShader(loadMem(entry::getFileReader(), shaderfile) );
 		bgfx::setName(handle, shaderfile);
 		
