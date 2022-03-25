@@ -153,7 +153,8 @@ public:
 	Effekseer::TextureRef Load(const char16_t* path, Effekseer::TextureType textureType) override {
 		char buffer[MAX_PATH];
 		Effekseer::ConvertUtf16ToUtf8(buffer, MAX_PATH, path);
-		int srgb = textureType == Effekseer::TextureType::Color;
+		// always create gamma space texture, Effekseer will convert color in shader with MiscFlag set to convert
+		const int srgb = 0; //textureType == Effekseer::TextureType::Color;
 		bgfx_texture_handle_t handle = m_loader(buffer, srgb, m_ud);
 
 		auto texture = Effekseer::MakeRefPtr<Effekseer::Texture>();
@@ -1228,7 +1229,9 @@ public:
 		return Effekseer::MakeRefPtr<Texture>(this, handle);
 	}
 	void ReleaseTexture(Texture *t) const {
-		BGFX(destroy_texture)(t->RemoveInterface());
+		bgfx_texture_handle_t h = t->RemoveInterface();
+		if (BGFX_HANDLE_IS_VALID(h))
+			BGFX(destroy_texture)(h);
 	}
 	Effekseer::Backend::IndexBufferRef CreateIndexBuffer(int32_t elementCount, const void* initialData, Effekseer::Backend::IndexBufferStrideType stride) const {
 		int s = (stride == Effekseer::Backend::IndexBufferStrideType::Stride4) ? 4 : 2;
