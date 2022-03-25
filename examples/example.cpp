@@ -12,7 +12,7 @@
 #include <bgfx/c99/bgfx.h>
 
 #include "renderer/bgfxrenderer.h"
-#define DEF_VIEWID	0
+#define DEF_VIEWID	1
 
 #include <string>
 namespace
@@ -51,8 +51,11 @@ public:
 			EffekseerBgfxTest::TextureLoad,
 			EffekseerBgfxTest::TextureGet,
 			EffekseerBgfxTest::TextureUnload,
-			nullptr
+			this,
 		};
+
+		initFullScreen();
+		initCube();
 
 		m_efkRenderer = EffekseerRendererBGFX::CreateRenderer(&efkArgs);
 		m_efkManager = Effekseer::Manager::Create(8000);
@@ -68,19 +71,22 @@ public:
 		m_efkManager->SetMaterialLoader(m_efkRenderer->CreateMaterialLoader());
 		m_efkManager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());
 
-		m_efkRenderer->SetProjectionMatrix(Effekseer::Matrix44().PerspectiveFovLH(
-			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f));
-		m_efkRenderer->SetCameraMatrix(
-		Effekseer::Matrix44().LookAtLH(Effekseer::Vector3D(10.0f, 5.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f)));
+		m_projMat.PerspectiveFovLH(
+			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f);
+		m_efkRenderer->SetProjectionMatrix(m_projMat);
+		m_viewMat.LookAtLH(Effekseer::Vector3D(20.0f, 20.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f));
+		m_efkRenderer->SetCameraMatrix(m_viewMat);
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
+		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
+		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
+		m_efkEffectHandle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
 
 		// Set view 0 clear state.
-		bgfx::setViewClear(0
+		bgfx::setViewClear(DEF_VIEWID
 			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
 			, 0x303030ff
 			, 1.0f
@@ -105,20 +111,13 @@ public:
 		{
 			// Set view 0 default viewport.
 			bgfx::setViewRect(DEF_VIEWID, 0, 0, uint16_t(m_width), uint16_t(m_height) );
-
-			static int s_time = 0;
-			static Effekseer::Handle s_handle = 0;
-
-			if (s_time % 120 == 0){
-				s_handle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
-			} else if (s_time % 120 == 119){
-				m_efkManager->StopEffect(s_handle);
-			}
-
-			m_efkManager->AddLocation(s_handle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
 			m_efkManager->Update();
 
-			m_efkRenderer->SetTime(s_time / 60.0f);
+			drawCube(m_sceneViewId);
+			drawFullScreen(DEF_VIEWID);
+
+			bgfx::setViewTransform(DEF_VIEWID, m_viewMat.Values, m_projMat.Values);
+			//m_efkRenderer->SetTime(s_time / 60.0f);
 			m_efkRenderer->BeginRendering();
 
 			Effekseer::Manager::DrawParameter drawParameter;
@@ -129,8 +128,6 @@ public:
 
 			m_efkRenderer->EndRendering();
 			bgfx::frame();
-
-			++s_time;
 			return true;
 		}
 
@@ -145,7 +142,121 @@ public:
 	uint32_t m_reset;
 
 private:
-	static const bgfx::Memory* loadMem(bx::FileReaderI* _reader, const char* _filePath)
+	void
+	initCube(){
+		struct PosColorVertex
+		{
+			float m_x;
+			float m_y;
+			float m_z;
+			uint32_t m_abgr;
+		};
+		const float len = 5.f;
+		static const PosColorVertex s_vertices[] =
+		{
+			{-len,  len,  len, 0xff000000 },
+			{ len,  len,  len, 0xff0000ff },
+			{-len, -len,  len, 0xff00ff00 },
+			{ len, -len,  len, 0xff00ffff },
+			{-len,  len, -len, 0xffff0000 },
+			{ len,  len, -len, 0xffff00ff },
+			{-len, -len, -len, 0xffffff00 },
+			{ len, -len, -len, 0xffffffff },
+		};
+
+		static const uint16_t s_indices[] =
+		{
+			0, 1, 2, // 0
+			1, 3, 2,
+			4, 6, 5, // 2
+			5, 6, 7,
+			0, 2, 4, // 4
+			4, 2, 6,
+			1, 5, 3, // 6
+			5, 7, 3,
+			0, 4, 1, // 8
+			4, 5, 1,
+			2, 3, 6, // 10
+			6, 3, 7,
+		};
+
+		m_cubeLayout
+			.begin()
+			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+			.add(bgfx::Attrib::Color0,   4, bgfx::AttribType::Uint8, true)
+			.end();
+		
+		m_cubeVertexBuffer = bgfx::createVertexBuffer(
+			bgfx::makeRef(s_vertices, sizeof(s_vertices))
+			,m_cubeLayout);
+
+		m_cubeIndexBuffer = bgfx::createIndexBuffer(
+			bgfx::makeRef(s_indices, sizeof(s_indices) ));
+
+
+		m_cubeProg = bgfx::createProgram(
+			bgfx::createShader(loadMem(entry::getFileReader(), "cube/shaders/vs_cube.bin") ),
+			bgfx::createShader(loadMem(entry::getFileReader(), "cube/shaders/fs_cube.bin") ),
+			true);
+	}
+
+	void
+	drawCube(bgfx::ViewId viewid){
+		bgfx::setViewFrameBuffer(viewid, m_frameBuffer);
+		bgfx::setViewTransform(viewid, m_viewMat.Values, m_projMat.Values);
+		bgfx::setVertexBuffer(0, m_cubeVertexBuffer);
+		bgfx::setIndexBuffer(m_cubeIndexBuffer);
+
+		bgfx::setState(m_renderstate);
+		bgfx::submit(viewid, m_cubeProg, 0, BGFX_DISCARD_ALL);
+	}
+
+	void
+	initFullScreen(){
+		m_sceneViewId = 0;
+		m_sceneTex 	= bgfx::createTexture2D(m_width, m_height, false, 1, bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_RT);
+		m_sceneDepth = bgfx::createTexture2D(m_width, m_height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT);
+		const bgfx::TextureHandle handles[] = {m_sceneTex, m_sceneDepth};
+		m_frameBuffer = bgfx::createFrameBuffer(2, handles, false);
+
+		bgfx::setViewFrameBuffer(m_sceneViewId, m_frameBuffer);
+		bgfx::setViewRect(m_sceneViewId, 0, 0, m_width, m_height);
+		bgfx::setViewClear(m_sceneViewId
+			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
+			, 0x30ffffff
+			, 1.0f
+			, 0
+			);
+
+		bgfx::ShaderHandle fs = bgfx::createShader(loadMem(entry::getFileReader(), "cube/shaders/fs_fullscreen.bin"));
+		m_fullscreenProg = bgfx::createProgram(
+			bgfx::createShader(loadMem(entry::getFileReader(), "cube/shaders/vs_fullscreen.bin")),
+			fs,
+			true);
+
+		bgfx::UniformHandle uniforms[16];
+		uint32_t numUniform = bgfx::getShaderUniforms(fs, uniforms, 16);
+		for (uint32_t ii=0; ii<numUniform; ++ii){
+			bgfx::UniformInfo info;
+			const bgfx::UniformHandle h = uniforms[ii];
+			bgfx::getUniformInfo(h, info);
+			if (info.name == "s_scene"){
+				m_fullscreenTextureUniformHandle = h;
+				break;
+			}
+		}
+	}
+
+	void
+	drawFullScreen(bgfx::ViewId viewid) {
+		bgfx::setVertexBuffer(0, m_cubeVertexBuffer, 0, 3);
+		bgfx::setState(m_fullscreenstate);
+		bgfx::setTexture(0, m_fullscreenTextureUniformHandle, m_sceneTex, BGFX_SAMPLER_NONE);
+		bgfx::submit(viewid, m_fullscreenProg, 0, BGFX_DISCARD_ALL);
+	}
+
+	static const bgfx::Memory*
+	loadMem(bx::FileReaderI* _reader, const char* _filePath)
 	{
 		if (bx::open(_reader, _filePath) )
 		{
@@ -224,7 +335,22 @@ private:
 	}
 
 	static bgfx_texture_handle_t TextureGet(int texture_type, void *parm, void *ud){
-		assert(false && "not implement");
+		EffekseerBgfxTest *that = (EffekseerBgfxTest *)ud;
+		if (texture_type == TEXTURE_BACKGROUND)
+			return {that->m_sceneTex.idx};
+
+		if (texture_type == TEXTURE_DEPTH){
+			EffekseerRenderer::DepthReconstructionParameter *p = (EffekseerRenderer::DepthReconstructionParameter*)parm;
+			p->DepthBufferScale = 1.0f;
+			p->DepthBufferOffset = 0.0f;
+
+			p->ProjectionMatrix33 = that->m_projMat.Values[2][2];
+			p->ProjectionMatrix34 = that->m_projMat.Values[2][3];
+			p->ProjectionMatrix43 = that->m_projMat.Values[3][2];
+			p->ProjectionMatrix44 = that->m_projMat.Values[4][4];
+			return {that->m_sceneDepth.idx};
+		}
+		assert(false && "invalid texture type");
 		return {BGFX_INVALID_HANDLE};
 	}
 
@@ -235,13 +361,46 @@ private:
 	}
 
 	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
-		bgfx::TextureHandle h = {handle.idx};
-		bgfx::destroy(h);
+		bgfx::destroy(bgfx::TextureHandle{handle.idx});
 	}
 private:
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
 	Effekseer::ManagerRef m_efkManager = nullptr;
 	Effekseer::EffectRef m_efkEffect = nullptr;
+	Effekseer::Handle m_efkEffectHandle = 0;
+	Effekseer::Matrix44	m_projMat;
+	Effekseer::Matrix44	m_viewMat;
+
+	bgfx::ViewId m_sceneViewId;
+	bgfx::TextureHandle m_sceneTex = BGFX_INVALID_HANDLE;
+	bgfx::TextureHandle m_sceneDepth = BGFX_INVALID_HANDLE;
+	bgfx::FrameBufferHandle m_frameBuffer = BGFX_INVALID_HANDLE;
+
+	bgfx::VertexLayout m_cubeLayout;
+	bgfx::VertexBufferHandle m_cubeVertexBuffer;
+	bgfx::IndexBufferHandle m_cubeIndexBuffer;
+
+	bgfx::ProgramHandle m_fullscreenProg;
+	bgfx::ProgramHandle m_cubeProg;
+
+	bgfx::UniformHandle m_fullscreenTextureUniformHandle;
+
+	const uint64_t m_renderstate = 0
+		| BGFX_STATE_WRITE_R
+		| BGFX_STATE_WRITE_G
+		| BGFX_STATE_WRITE_B
+		| BGFX_STATE_WRITE_A
+		| BGFX_STATE_WRITE_Z
+		| BGFX_STATE_DEPTH_TEST_LESS
+		| BGFX_STATE_CULL_CW
+		| BGFX_STATE_MSAA;
+
+	const uint64_t m_fullscreenstate = 	0
+		| BGFX_STATE_WRITE_R
+		| BGFX_STATE_WRITE_G
+		| BGFX_STATE_WRITE_B
+		| BGFX_STATE_WRITE_A
+		| BGFX_STATE_MSAA;
 };
 
 } // namespace

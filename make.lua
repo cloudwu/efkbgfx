@@ -247,7 +247,7 @@ end
 
 local files_built = {}
 
-local function build_shader(input, output, defines, stagetype, shadertype, modeltype)
+local function build_eff_shader(input, output, defines, stagetype, shadertype, modeltype)
     if files_built[input:string()] then
         return
     end
@@ -289,7 +289,36 @@ for modeltype, shaders in pairs(shaderfiles) do
             local filename = shader[stage]
             local infile = vulkan_shader_dir / filename
             local outfile = shader_output_dir / fs.path(filename):replace_extension "bin"
-            build_shader(infile, outfile, shader.defines, stage, st, modeltype)
+            build_eff_shader(infile, outfile, shader.defines, stage, st, modeltype)
         end
     end
+end
+
+----------------------------------------------------------------
+local cube_shader_dir = fs.path "examples/cube/shaders"
+for _, s in ipairs{
+    "vs_fullscreen.sc",
+    "fs_fullscreen.sc",
+    "vs_cube.sc",
+    "fs_cube.sc",
+} do
+    local input = cube_shader_dir / s
+    local output = fs.path(input):replace_extension "bin"
+    local stage = s:match "([vf]s)"
+    local cfg = {
+        renderer = platform_renderers[lm.os],
+        stage = stage,
+        plat = lm.os,
+        optimizelevel = 3,
+        --debug = true,
+        includes = {
+            cwd / bgfxdir / "src",
+            cwd / bgfx_example_dir / "common",
+        },
+        defines = {},
+        input = input:string(),
+        output = output:string(),
+    }
+    local cmd = sc.gen_cmd(shaderc:string(), cfg)
+    lm:build(cmd)
 end
