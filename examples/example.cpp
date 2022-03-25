@@ -316,7 +316,7 @@ private:
 
 	static bgfx::TextureHandle createTexture(const char* filename, uint64_t state){
 		if (isPngFile(filename)){
-			auto image = imageLoad(filename, bgfx::TextureFormat::BGRA8);
+			auto image = imageLoad(filename, bgfx::TextureFormat::RGBA8);
 			assert(image && "invalid png file");
 			auto h = bgfx::createTexture2D(
 				  (uint16_t)image->m_width
@@ -357,6 +357,7 @@ private:
 	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
 		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
+		bgfx::setName(handle, name);
 		return {handle.idx};
 	}
 
