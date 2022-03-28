@@ -12,7 +12,9 @@
 #include <bgfx/c99/bgfx.h>
 
 #include "renderer/bgfxrenderer.h"
-#define DEF_VIEWID	1
+
+static const bgfx::ViewId g_sceneViewId = 0;
+static const bgfx::ViewId g_defaultViewId = 1;
 
 #include <string>
 namespace
@@ -43,10 +45,13 @@ public:
 		init.resolution.reset  = m_reset;
 		bgfx::init(init);
 
+		bgfx::setViewMode(g_sceneViewId, bgfx::ViewMode::Sequential);
+		bgfx::setViewMode(g_defaultViewId, bgfx::ViewMode::Sequential);
+
 		auto inter = bgfx_get_interface(BGFX_API_VERSION);
 
 		EffekseerRendererBGFX::InitArgs efkArgs {
-			2048, DEF_VIEWID, inter,
+			2048, g_defaultViewId, inter,
 			EffekseerBgfxTest::ShaderLoad,
 			EffekseerBgfxTest::TextureLoad,
 			EffekseerBgfxTest::TextureGet,
@@ -74,7 +79,7 @@ public:
 		m_projMat.PerspectiveFovLH(
 			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f);
 		m_efkRenderer->SetProjectionMatrix(m_projMat);
-		m_viewMat.LookAtLH(Effekseer::Vector3D(20.0f, 20.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f));
+		m_viewMat.LookAtLH(Effekseer::Vector3D(0.0f, 0.0f, 40.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f));
 		m_efkRenderer->SetCameraMatrix(m_viewMat);
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
@@ -86,7 +91,7 @@ public:
 		bgfx::setDebug(m_debug);
 
 		// Set view 0 clear state.
-		bgfx::setViewClear(DEF_VIEWID
+		bgfx::setViewClear(g_defaultViewId
 			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
 			, 0x303030ff
 			, 1.0f
@@ -110,13 +115,13 @@ public:
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
 			// Set view 0 default viewport.
-			bgfx::setViewRect(DEF_VIEWID, 0, 0, uint16_t(m_width), uint16_t(m_height) );
+			bgfx::setViewRect(g_defaultViewId, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 			m_efkManager->Update();
 
-			drawCube(m_sceneViewId);
-			drawFullScreen(DEF_VIEWID);
+			drawCube(g_sceneViewId);
+			drawFullScreen(g_defaultViewId);
 
-			bgfx::setViewTransform(DEF_VIEWID, m_viewMat.Values, m_projMat.Values);
+			bgfx::setViewTransform(g_defaultViewId, m_viewMat.Values, m_projMat.Values);
 			//m_efkRenderer->SetTime(s_time / 60.0f);
 			m_efkRenderer->BeginRendering();
 
@@ -203,6 +208,14 @@ private:
 	void
 	drawCube(bgfx::ViewId viewid){
 		bgfx::setViewFrameBuffer(viewid, m_frameBuffer);
+		const float h = 15.f;
+		const float worldmat[16] = {
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 1.f, 0.f,
+			0.f, h,   0.f, 1.f,
+		};
+		bgfx::setTransform(worldmat);
 		bgfx::setViewTransform(viewid, m_viewMat.Values, m_projMat.Values);
 		bgfx::setVertexBuffer(0, m_cubeVertexBuffer);
 		bgfx::setIndexBuffer(m_cubeIndexBuffer);
@@ -213,17 +226,16 @@ private:
 
 	void
 	initFullScreen(){
-		m_sceneViewId = 0;
 		m_sceneTex 	= bgfx::createTexture2D(m_width, m_height, false, 1, bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_RT);
 		m_sceneDepth = bgfx::createTexture2D(m_width, m_height, false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT);
 		const bgfx::TextureHandle handles[] = {m_sceneTex, m_sceneDepth};
 		m_frameBuffer = bgfx::createFrameBuffer(2, handles, false);
 
-		bgfx::setViewFrameBuffer(m_sceneViewId, m_frameBuffer);
-		bgfx::setViewRect(m_sceneViewId, 0, 0, m_width, m_height);
-		bgfx::setViewClear(m_sceneViewId
+		bgfx::setViewFrameBuffer(g_sceneViewId, m_frameBuffer);
+		bgfx::setViewRect(g_sceneViewId, 0, 0, m_width, m_height);
+		bgfx::setViewClear(g_sceneViewId
 			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
-			, 0x30ffffff
+			, 0x000000ff
 			, 1.0f
 			, 0
 			);
@@ -372,7 +384,6 @@ private:
 	Effekseer::Matrix44	m_projMat;
 	Effekseer::Matrix44	m_viewMat;
 
-	bgfx::ViewId m_sceneViewId;
 	bgfx::TextureHandle m_sceneTex = BGFX_INVALID_HANDLE;
 	bgfx::TextureHandle m_sceneDepth = BGFX_INVALID_HANDLE;
 	bgfx::FrameBufferHandle m_frameBuffer = BGFX_INVALID_HANDLE;
