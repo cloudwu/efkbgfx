@@ -262,6 +262,7 @@ local function genshader(fullname, stagetype, type, modeltype)
 	local func = s.func
 	local main = func.main.imp:gsub("[%w_]+", varying.map)
 	main = main:gsub("_entryPointOutput", "gl_FragColor")
+	main = main:gsub("\n%s*_position.y%s*=%s*-_position.y;", "")
 	func.main.imp = main
 
 	for i, f in ipairs(func) do

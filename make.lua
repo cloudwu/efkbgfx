@@ -264,7 +264,7 @@ local function build_eff_shader(input, output, defines, stagetype, shadertype, m
         stage = stagetype,
         plat = lm.os,
         optimizelevel = 3,
-        --debug = true,
+        debug = true,
         includes = {
             cwd / bgfxdir / "src",
             cwd / bgfx_example_dir / "common",
@@ -310,7 +310,7 @@ for _, s in ipairs{
         stage = stage,
         plat = lm.os,
         optimizelevel = 3,
-        --debug = true,
+        debug = true,
         includes = {
             cwd / bgfxdir / "src",
             cwd / bgfx_example_dir / "common",

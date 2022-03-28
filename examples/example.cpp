@@ -74,7 +74,7 @@ public:
 		m_projMat.PerspectiveFovLH(
 			bx::toRad(90.0f), m_width/float(m_height), 1.0f, 500.0f);
 		m_efkRenderer->SetProjectionMatrix(m_projMat);
-		m_viewMat.LookAtLH(Effekseer::Vector3D(20.0f, 20.0f, -20.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f));
+		m_viewMat.LookAtLH(Effekseer::Vector3D(0.0f, 0.0f, 40.0f), Effekseer::Vector3D(0.0f, 0.0f, 0.0f), Effekseer::Vector3D(0.0f, 1.0f, 0.0f));
 		m_efkRenderer->SetCameraMatrix(m_viewMat);
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
@@ -203,6 +203,14 @@ private:
 	void
 	drawCube(bgfx::ViewId viewid){
 		bgfx::setViewFrameBuffer(viewid, m_frameBuffer);
+		const float h = 15.f;
+		const float worldmat[16] = {
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 1.f, 0.f,
+			0.f, h,   0.f, 1.f,
+		};
+		bgfx::setTransform(worldmat);
 		bgfx::setViewTransform(viewid, m_viewMat.Values, m_projMat.Values);
 		bgfx::setVertexBuffer(0, m_cubeVertexBuffer);
 		bgfx::setIndexBuffer(m_cubeIndexBuffer);
@@ -223,7 +231,7 @@ private:
 		bgfx::setViewRect(m_sceneViewId, 0, 0, m_width, m_height);
 		bgfx::setViewClear(m_sceneViewId
 			, BGFX_CLEAR_COLOR|BGFX_CLEAR_DEPTH
-			, 0x30ffffff
+			, 0x000000ff
 			, 1.0f
 			, 0
 			);
