@@ -1,12 +1,13 @@
 local lm = require "luamake"
 local fs = require "bee.filesystem"
 
-local efkdir    = fs.path(os.getenv "efkdir" or "../Effekseer")
+local smdir     = fs.path(lm.EfkDir or "../")
+local efkdir    = smdir / "Effekseer"
 local efksrc    = efkdir / "Dev/Cpp"
 
-local bgfxdir   = fs.path(os.getenv "bgfxdir" or "../bgfx")
-local bxdir     = fs.path(os.getenv "bxdir" or "../bx")
-local bimgdir   = fs.path(os.getenv "bimgdir" or "../bimg")
+local bgfxdir   = smdir / "bgfx"
+local bxdir     = smdir / "bx"
+local bimgdir   = smdir / "bimg"
 
 local plat = (function ()
     if lm.os == "windows" then
@@ -165,8 +166,7 @@ local platform_renderers = {
     android = "vulkan",
 }
 
-local cwd = fs.current_path()
---local example_shader_dir = fs.path "./examples/shaders"
+local cwd = fs.path(lm.workdir)
 local vulkan_shader_dir = cwd / "../Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader"
 local shader_output_dir = cwd / "examples/shaders"
 
