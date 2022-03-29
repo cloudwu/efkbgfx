@@ -2,9 +2,9 @@ build
 bin
 *.code-workspace
 .vscode
-examples/shaders/*.bin
-examples/shaders/*.hlsl
-examples/shaders/*.sc
+shaders/*.bin
+shaders/*.hlsl
+shaders/*.sc
 examples/cube/shaders/*.bin
 examples/cube/shaders/*.hlsl
 *.dll
