@@ -1,4 +1,14 @@
+local lm = require "luamake"
 local fs = require "bee.filesystem"
+
+local Platform_renderers = {
+    windows = "direct3d11",
+    ios = "metal",
+    macos = "metal",
+    linux = "vulkan",
+    android = "vulkan",
+}
+
 local stage_types = {
 	fs = "fragment",
 	vs = "vertex",
@@ -6,46 +16,42 @@ local stage_types = {
 }
 
 local shader_options = {
-	direct3d9 = {
-		vs = "vs_3_0",
-		fs = "ps_3_0",
-	},
-	direct3d11 = {
+	windows = {
 		vs = "vs_5_0",
 		fs = "ps_5_0",
 		cs = "cs_5_0",
 	},
-	direct3d12 = {
-		vs = "vs_5_0",
-		fs = "ps_5_0",
-		cs = "cs_5_0",
-	},
-	opengl = {
-		vs = "120",
-		fs = "120",
-		cs = "430",
-	},
-	metal = {
+	ios = {
 		vs = "metal",
 		fs = "metal",
 		cs = "metal",
 	},
-	vulkan = {
+    macos = {
+		vs = "metal",
+		fs = "metal",
+		cs = "metal",
+	},
+    linux = {
 		vs = "spirv",
 		fs = "spirv",
+        cs = "spriv",
+	},
+	android = {
+		vs = "spirv",
+		fs = "spirv",
+        cs = "spriv",
 	},
 }
 
 
 local function generate_command(shaderc, cfg)
-    local renderer = cfg.renderer
     local stagename = cfg.stage
     local commands = {
         shaderc,
         "-f", "$in", "-o", "$out",
-        "--platform", cfg.plat,
+        "--platform", lm.os,
         "--type", stage_types[stagename],
-        "-p", shader_options[renderer][stagename],
+        "-p", shader_options[lm.os][stagename],
         input = cfg.input,
         output = cfg.output,
     }
