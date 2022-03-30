@@ -294,19 +294,19 @@ private:
 			return _FS;\
 		}
 
-		CHECK_SHADER("sprite_unlit", 			"shaders/sprite_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
-		CHECK_SHADER("sprite_lit", 				"shaders/sprite_lit_vs.fx.bin", 		"shaders/model_lit_ps.fx.bin");
-		CHECK_SHADER("sprite_distortion", 		"shaders/sprite_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_unlit", 		"shaders/ad_sprite_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_lit", 			"shaders/ad_sprite_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_distortion", 	"shaders/ad_sprite_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
+		CHECK_SHADER("sprite_unlit", 			"../shaders/sprite_unlit_vs.fx.bin", 		"../shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_lit", 				"../shaders/sprite_lit_vs.fx.bin", 			"../shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_distortion", 		"../shaders/sprite_distortion_vs.fx.bin", 	"../shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_unlit", 		"../shaders/ad_sprite_unlit_vs.fx.bin", 	"../shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_lit", 			"../shaders/ad_sprite_lit_vs.fx.bin", 		"../shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_distortion", 	"../shaders/ad_sprite_distortion_vs.fx.bin","../shaders/ad_model_distortion_ps.fx.bin");
 
-		CHECK_SHADER("model_unlit", 			"shaders/model_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
-		CHECK_SHADER("model_lit", 				"shaders/model_lit_vs.fx.bin", 			"shaders/model_lit_ps.fx.bin");
-		CHECK_SHADER("model_distortion", 		"shaders/model_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
-		CHECK_SHADER("model_adv_unlit", 		"shaders/ad_model_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
-		CHECK_SHADER("model_adv_lit", 			"shaders/ad_model_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
-		CHECK_SHADER("model_adv_distortion", 	"shaders/ad_model_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
+		CHECK_SHADER("model_unlit", 			"../shaders/model_unlit_vs.fx.bin", 		"../shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_lit", 				"../shaders/model_lit_vs.fx.bin", 			"../shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("model_distortion", 		"../shaders/model_distortion_vs.fx.bin", 	"../shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("model_adv_unlit", 		"../shaders/ad_model_unlit_vs.fx.bin", 		"../shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_adv_lit", 			"../shaders/ad_model_lit_vs.fx.bin", 		"../shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("model_adv_distortion", 	"../shaders/ad_model_distortion_vs.fx.bin", "../shaders/ad_model_distortion_ps.fx.bin");
 
 		assert(false && "invalid shader name and type name");
 		return nullptr;

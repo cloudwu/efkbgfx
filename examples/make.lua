@@ -26,6 +26,9 @@ lm:exe "example"{
         "efkbgfx",
         "efkmat",
     },
+    bindir = {
+        lm.workdir .. ("/bin/%s/%s"):format(Plat, lm.mode),
+    },
     includes = {
         alloca_file_includes[Plat]:string(),
         EfkLib_Includes,
