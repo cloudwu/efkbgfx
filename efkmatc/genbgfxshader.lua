@@ -1,4 +1,17 @@
-package.cpath = "efkmatc/?.dll;./?.dll"
+local modulepath	= arg[1]
+package.cpath = table.concat({
+	"efkmatc/?.dll",
+	"./?.dll",
+	modulepath .. "/?.dll"
+}, ";")
+
+print("cpath", package.cpath)
+
+local input 		= arg[2]
+local output 		= arg[3]
+local shadertype 	= arg[4]
+local stage 		= arg[5]
+local modeltype 	= arg[6]
 
 local efkmat = require "efkmat"
 
@@ -369,14 +382,6 @@ local function writefile(filename, text)
 	f:write(text)
 	f:close()
 end
-
-local input = arg[1]
-local output = arg[2]
-local shadertype = arg[3]
-local stage = arg[4]
-local modeltype = arg[5]
-
-
 
 local r = genshader(input, stage, shadertype, modeltype)
 if r.varying then

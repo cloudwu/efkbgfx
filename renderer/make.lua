@@ -32,6 +32,9 @@ lm:source_set "source_efkbgfx" {
     sources = {
         "bgfxrenderer.cpp",
     },
+    deps = {
+        "source_efklib"
+    },
     defines = {
         "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
         "EFXBGFX_EXPORTS=1",
@@ -39,18 +42,10 @@ lm:source_set "source_efkbgfx" {
     }
 }
 
-
-local bgfxdll_name  = "bgfx-shared-lib" .. BgfxNameSuffix .. ".dll"
-
-lm:copy "copy_bgfx" {
-    input   = (BgfxBinDir / bgfxdll_name):string(),
-    output  = "build/bin/" .. bgfxdll_name
+lm:lib "efkbgfx_lib" {
+    deps = {"source_efkbgfx"}
 }
 
 lm:dll "efkbgfx" {
-    deps = {
-        "efklib",
-        "source_efkbgfx",
-        "copy_bgfx",
-    },
+    deps = {"source_efkbgfx"},
 }

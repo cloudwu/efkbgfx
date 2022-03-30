@@ -5,8 +5,10 @@ package.path = "./?.lua;../?.lua"
 
 require "buildscripts.common"
 
+lm:import "../efkmatc/make.lua"
+
 local cwd = fs.path(lm.workdir)
-local vulkan_shader_dir = cwd / lm.EfkDir / "Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader"
+local vulkan_shader_dir = (cwd / lm.EfkDir) / "Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader"
 local shader_output_dir = cwd
 
 local shaderfiles = {
@@ -72,10 +74,12 @@ local function print_cfg(cfg)
     end
 end
 
-
+local genbgfxshader_path = lm.workdir .. "/../efkmatc"
+genbgfxshader_path = genbgfxshader_path:gsub(fs.current_path():string() .. "/", "")
+local genbgfxshader_file = genbgfxshader_path .. "/genbgfxshader.lua"
 local function cvt2bgfxshader(input, output, shadertype, stage, modeltype)
     lm:build {
-        "$luamake", "lua", "../efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype,
+        "$luamake", "lua", genbgfxshader_file, genbgfxshader_path, "$in", "$out", shadertype, stage, modeltype,
         input = input:string(),
         output = output:string(),
     }
@@ -110,12 +114,13 @@ local function build_eff_shader(input, output, defines, stagetype, shadertype, m
 
     --print_cfg(cfg)
 
-    local cmd = sc.gen_cmd((cwd / Shaderc):string(), cfg)
+    local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     --print(table.concat(cmd, " "))
 
     lm:build(cmd)
 end
 
+local outshaders = {}
 for modeltype, shaders in pairs(shaderfiles) do
     for st, shader in pairs(shaders) do
         for _, stage in ipairs{"vs", "fs"} do
@@ -123,6 +128,14 @@ for modeltype, shaders in pairs(shaderfiles) do
             local infile = vulkan_shader_dir / filename
             local outfile = shader_output_dir / fs.path(filename):replace_extension "bin"
             build_eff_shader(infile, outfile, shader.defines, stage, st, modeltype)
+            outshaders[#outshaders+1] = outfile:string()
         end
     end
 end
+
+lm:phony "efkbgfx_shaders" {
+    deps = {
+        "efkmat"
+    },
+    input = outshaders,
+}

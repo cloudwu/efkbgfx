@@ -11,6 +11,5 @@ lm:lua_dll "efkmat" {
         "efkmat.cpp",
     },
     deps = "source_efklib",
-    bindir = ".",
-    builddir = "build",
+    bindir = lm.workdir
 }
