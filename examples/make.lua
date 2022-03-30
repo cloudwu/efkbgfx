@@ -3,7 +3,7 @@ local fs = require "bee.filesystem"
 
 package.path = "./?.lua;../?.lua"
 lm.EfkDir = "../../"
-
+lm.BgfxBinDir = "../../bgfx/.build/win64_vs2022/bin"
 require "buildscripts.common"
 
 local bx_libname    = "bx" .. BgfxNameSuffix
@@ -103,6 +103,6 @@ for _, s in ipairs{
         input = input:string(),
         output = output:string(),
     }
-    local cmd = sc.gen_cmd((cwd / Shaderc):string(), cfg)
+    local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     lm:build(cmd)
 end

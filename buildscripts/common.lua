@@ -23,7 +23,11 @@ local function find_shaderc()
     if not fs.exists(shaderc) then
         shaderc = BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)
         if not fs.exists(shaderc) then
-            error "need bgfx shaderc tool"
+            error(table.concat({
+                "need bgfx shaderc tool, tried:",
+                (BgfxBinDir / "shaderc.exe"):string(),
+                (BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)):string()
+            }, "\n"))
         end
     end
     return shaderc

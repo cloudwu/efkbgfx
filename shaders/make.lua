@@ -74,12 +74,11 @@ local function print_cfg(cfg)
     end
 end
 
-local genbgfxshader_path = lm.workdir .. "/../efkmatc"
-genbgfxshader_path = genbgfxshader_path:gsub(fs.current_path():string() .. "/", "")
-local genbgfxshader_file = genbgfxshader_path .. "/genbgfxshader.lua"
 local function cvt2bgfxshader(input, output, shadertype, stage, modeltype)
     lm:build {
-        "$luamake", "lua", genbgfxshader_file, genbgfxshader_path, "$in", "$out", shadertype, stage, modeltype,
+        "cmd", "/c",
+        "cd", lm.workdir .. "/../efkmatc", "&&",
+        "$luamake", "lua", "../efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype,
         input = input:string(),
         output = output:string(),
     }
