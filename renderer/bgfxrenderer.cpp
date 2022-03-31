@@ -1046,7 +1046,7 @@ public:
 		m_currentlayout = shader->m_layout;
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
-		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
+		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), vertexOffset, spriteCount*4, m_currentlayout);
 		const uint32_t indexCount = spriteCount * 6;
 		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
@@ -1055,7 +1055,6 @@ public:
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
-		//BGFX(set_vertex_buffer)(0, m_currentVertexBuffer, 0, vertexCount);
 		BGFX(set_instance_count)(instanceCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
