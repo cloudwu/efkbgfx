@@ -2,24 +2,24 @@ $input v_Color v_UV v_PosP
 
 #include <bgfx_shader.sh>
 #include "defines.sh"
-uniform vec4 u_fLightDirection;
-uniform vec4 u_fLightColor;
-uniform vec4 u_fLightAmbient;
-uniform vec4 u_fFlipbookParameter;
-uniform vec4 u_fUVDistortionParameter;
-uniform vec4 u_fBlendTextureParameter;
-uniform vec4 u_fCameraFrontDirection;
-uniform vec4 u_fFalloffParameter;
-uniform vec4 u_fFalloffBeginColor;
-uniform vec4 u_fFalloffEndColor;
-uniform vec4 u_fEmissiveScaling;
-uniform vec4 u_fEdgeColor;
-uniform vec4 u_fEdgeParameter;
-uniform vec4 u_softParticleParam;
-uniform vec4 u_reconstructionParam1;
-uniform vec4 u_reconstructionParam2;
-uniform vec4 u_mUVInversedBack;
-uniform vec4 u_miscFlags;
+uniform vec4 u_fsfLightDirection;
+uniform vec4 u_fsfLightColor;
+uniform vec4 u_fsfLightAmbient;
+uniform vec4 u_fsfFlipbookParameter;
+uniform vec4 u_fsfUVDistortionParameter;
+uniform vec4 u_fsfBlendTextureParameter;
+uniform vec4 u_fsfCameraFrontDirection;
+uniform vec4 u_fsfFalloffParameter;
+uniform vec4 u_fsfFalloffBeginColor;
+uniform vec4 u_fsfFalloffEndColor;
+uniform vec4 u_fsfEmissiveScaling;
+uniform vec4 u_fsfEdgeColor;
+uniform vec4 u_fsfEdgeParameter;
+uniform vec4 u_fssoftParticleParam;
+uniform vec4 u_fsreconstructionParam1;
+uniform vec4 u_fsreconstructionParam2;
+uniform vec4 u_fsmUVInversedBack;
+uniform vec4 u_fsmiscFlags;
 SAMPLER2D (s_colorTex,0);
 SAMPLER2D (s_depthTex,1);
 
@@ -98,24 +98,24 @@ vec4 ConvertToScreen(vec4 c, bool isValid)
 
 vec4 _main(PS_Input Input)
 {
-    bool convertColorSpace = !(u_miscFlags.x == 0.0);
+    bool convertColorSpace = !(u_fsmiscFlags.x == 0.0);
     vec4 param = texture2D(s_colorTex, Input.UV);
     bool param_1 = convertColorSpace;
     vec4 Output = ConvertFromSRGBTexture(param, param_1) * Input.Color;
-    vec3 _258 = Output.xyz * u_fEmissiveScaling.x;
+    vec3 _258 = Output.xyz * u_fsfEmissiveScaling.x;
     Output = vec4(_258.x, _258.y, _258.z, Output.w);
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    screenUV.y = u_mUVInversedBack.x + (u_mUVInversedBack.y * screenUV.y);
-    if (!(u_softParticleParam.w == 0.0))
+    screenUV.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * screenUV.y);
+    if (!(u_fssoftParticleParam.w == 0.0))
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_2 = backgroundZ;
         float param_3 = screenPos.z;
-        vec4 param_4 = u_softParticleParam;
-        vec4 param_5 = u_reconstructionParam1;
-        vec4 param_6 = u_reconstructionParam2;
+        vec4 param_4 = u_fssoftParticleParam;
+        vec4 param_5 = u_fsreconstructionParam1;
+        vec4 param_6 = u_fsreconstructionParam2;
         Output.w *= SoftParticle(param_2, param_3, param_4, param_5, param_6);
     }
     if (Output.w == 0.0)

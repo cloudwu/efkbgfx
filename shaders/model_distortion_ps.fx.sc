@@ -2,14 +2,14 @@ $input v_UV v_ProjBinormal v_ProjTangent v_PosP v_Color
 
 #include <bgfx_shader.sh>
 #include "defines.sh"
-uniform vec4 u_g_scale;
-uniform vec4 u_mUVInversedBack;
-uniform vec4 u_fFlipbookParameter;
-uniform vec4 u_fUVDistortionParameter;
-uniform vec4 u_fBlendTextureParameter;
-uniform vec4 u_softParticleParam;
-uniform vec4 u_reconstructionParam1;
-uniform vec4 u_reconstructionParam2;
+uniform vec4 u_fsg_scale;
+uniform vec4 u_fsmUVInversedBack;
+uniform vec4 u_fsfFlipbookParameter;
+uniform vec4 u_fsfUVDistortionParameter;
+uniform vec4 u_fsfBlendTextureParameter;
+uniform vec4 u_fssoftParticleParam;
+uniform vec4 u_fsreconstructionParam1;
+uniform vec4 u_fsreconstructionParam2;
 SAMPLER2D (s_colorTex,0);
 SAMPLER2D (s_backTex,1);
 SAMPLER2D (s_depthTex,2);
@@ -47,25 +47,25 @@ vec4 _main(PS_Input Input)
     vec2 pos = Input.PosP.xy / vec2_splat(Input.PosP.w);
     vec2 posR = Input.ProjTangent.xy / vec2_splat(Input.ProjTangent.w);
     vec2 posU = Input.ProjBinormal.xy / vec2_splat(Input.ProjBinormal.w);
-    float xscale = (((Output.x * 2.0) - 1.0) * Input.Color.x) * u_g_scale.x;
-    float yscale = (((Output.y * 2.0) - 1.0) * Input.Color.y) * u_g_scale.x;
+    float xscale = (((Output.x * 2.0) - 1.0) * Input.Color.x) * u_fsg_scale.x;
+    float yscale = (((Output.y * 2.0) - 1.0) * Input.Color.y) * u_fsg_scale.x;
     vec2 uv = (pos + ((posR - pos) * xscale)) + ((posU - pos) * yscale);
     uv.x = (uv.x + 1.0) * 0.5;
     uv.y = 1.0 - ((uv.y + 1.0) * 0.5);
-    uv.y = u_mUVInversedBack.x + (u_mUVInversedBack.y * uv.y);
+    uv.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * uv.y);
     vec3 color = vec3(texture2D(s_backTex, uv).xyz);
     Output = vec4(color.x, color.y, color.z, Output.w);
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    if (!(u_softParticleParam.w == 0.0))
+    if (!(u_fssoftParticleParam.w == 0.0))
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param = backgroundZ;
         float param_1 = screenPos.z;
-        vec4 param_2 = u_softParticleParam;
-        vec4 param_3 = u_reconstructionParam1;
-        vec4 param_4 = u_reconstructionParam2;
+        vec4 param_2 = u_fssoftParticleParam;
+        vec4 param_3 = u_fsreconstructionParam1;
+        vec4 param_4 = u_fsreconstructionParam2;
         Output.w *= SoftParticle(param, param_1, param_2, param_3, param_4);
     }
     if (Output.w == 0.0)

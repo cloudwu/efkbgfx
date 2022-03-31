@@ -2,14 +2,14 @@ $input v_UV_Others v_ProjBinormal v_ProjTangent v_PosP v_Color v_Alpha_Dist_UV v
 
 #include <bgfx_shader.sh>
 #include "defines.sh"
-uniform vec4 u_g_scale;
-uniform vec4 u_mUVInversedBack;
-uniform vec4 u_fFlipbookParameter;
-uniform vec4 u_fUVDistortionParameter;
-uniform vec4 u_fBlendTextureParameter;
-uniform vec4 u_softParticleParam;
-uniform vec4 u_reconstructionParam1;
-uniform vec4 u_reconstructionParam2;
+uniform vec4 u_fsg_scale;
+uniform vec4 u_fsmUVInversedBack;
+uniform vec4 u_fsfFlipbookParameter;
+uniform vec4 u_fsfUVDistortionParameter;
+uniform vec4 u_fsfBlendTextureParameter;
+uniform vec4 u_fssoftParticleParam;
+uniform vec4 u_fsreconstructionParam1;
+uniform vec4 u_fsreconstructionParam2;
 SAMPLER2D (s_uvDistortionTex,3);
 SAMPLER2D (s_colorTex,0);
 SAMPLER2D (s_alphaTex,2);
@@ -174,29 +174,29 @@ vec4 _main(PS_Input Input)
     PS_Input param = Input;
     AdvancedParameter advancedParam = DisolveAdvancedParameter(param);
     vec2 param_1 = advancedParam.UVDistortionUV;
-    vec2 param_2 = u_fUVDistortionParameter.zw;
+    vec2 param_2 = u_fsfUVDistortionParameter.zw;
     bool param_3 = false;
     vec2 UVOffset = UVDistortionOffset(param_1, param_2, param_3, s_uvDistortionTex);
-    UVOffset *= u_fUVDistortionParameter.x;
+    UVOffset *= u_fsfUVDistortionParameter.x;
     vec4 Output = texture2D(s_colorTex, vec2_splat(Input.UV_Others.xy) + UVOffset);
     Output.w *= Input.Color.w;
     vec4 param_4 = Output;
     float param_5 = advancedParam.FlipbookRate;
     bool param_6 = false;
-    ApplyFlipbook(param_4, u_fFlipbookParameter, Input.Color, advancedParam.FlipbookNextIndexUV + UVOffset, param_5, param_6, s_colorTex);
+    ApplyFlipbook(param_4, u_fsfFlipbookParameter, Input.Color, advancedParam.FlipbookNextIndexUV + UVOffset, param_5, param_6, s_colorTex);
     Output = param_4;
     vec4 AlphaTexColor = texture2D(s_alphaTex, advancedParam.AlphaUV + UVOffset);
     Output.w *= (AlphaTexColor.x * AlphaTexColor.w);
     vec2 param_7 = advancedParam.BlendUVDistortionUV;
-    vec2 param_8 = u_fUVDistortionParameter.zw;
+    vec2 param_8 = u_fsfUVDistortionParameter.zw;
     bool param_9 = false;
     vec2 BlendUVOffset = UVDistortionOffset(param_7, param_8, param_9, s_blendUVDistortionTex);
-    BlendUVOffset *= u_fUVDistortionParameter.y;
+    BlendUVOffset *= u_fsfUVDistortionParameter.y;
     vec4 BlendTextureColor = texture2D(s_blendTex, advancedParam.BlendUV + BlendUVOffset);
     vec4 BlendAlphaTextureColor = texture2D(s_blendAlphaTex, advancedParam.BlendAlphaUV + BlendUVOffset);
     BlendTextureColor.w *= (BlendAlphaTextureColor.x * BlendAlphaTextureColor.w);
     vec4 param_10 = Output;
-    ApplyTextureBlending(param_10, BlendTextureColor, u_fBlendTextureParameter.x);
+    ApplyTextureBlending(param_10, BlendTextureColor, u_fsfBlendTextureParameter.x);
     Output = param_10;
     if (Output.w <= max(0.0, advancedParam.AlphaThreshold))
     {
@@ -205,25 +205,25 @@ vec4 _main(PS_Input Input)
     vec2 pos = Input.PosP.xy / vec2_splat(Input.PosP.w);
     vec2 posR = Input.ProjTangent.xy / vec2_splat(Input.ProjTangent.w);
     vec2 posU = Input.ProjBinormal.xy / vec2_splat(Input.ProjBinormal.w);
-    float xscale = (((Output.x * 2.0) - 1.0) * Input.Color.x) * u_g_scale.x;
-    float yscale = (((Output.y * 2.0) - 1.0) * Input.Color.y) * u_g_scale.x;
+    float xscale = (((Output.x * 2.0) - 1.0) * Input.Color.x) * u_fsg_scale.x;
+    float yscale = (((Output.y * 2.0) - 1.0) * Input.Color.y) * u_fsg_scale.x;
     vec2 uv = (pos + ((posR - pos) * xscale)) + ((posU - pos) * yscale);
     uv.x = (uv.x + 1.0) * 0.5;
     uv.y = 1.0 - ((uv.y + 1.0) * 0.5);
-    uv.y = u_mUVInversedBack.x + (u_mUVInversedBack.y * uv.y);
+    uv.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * uv.y);
     vec3 color = vec3(texture2D(s_backTex, uv).xyz);
     Output = vec4(color.x, color.y, color.z, Output.w);
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    if (!(u_softParticleParam.w == 0.0))
+    if (!(u_fssoftParticleParam.w == 0.0))
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_11 = backgroundZ;
         float param_12 = screenPos.z;
-        vec4 param_13 = u_softParticleParam;
-        vec4 param_14 = u_reconstructionParam1;
-        vec4 param_15 = u_reconstructionParam2;
+        vec4 param_13 = u_fssoftParticleParam;
+        vec4 param_14 = u_fsreconstructionParam1;
+        vec4 param_15 = u_fsreconstructionParam2;
         Output.w *= SoftParticle(param_11, param_12, param_13, param_14, param_15);
     }
     return Output;

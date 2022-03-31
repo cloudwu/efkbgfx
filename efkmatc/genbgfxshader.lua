@@ -212,17 +212,18 @@ local function gen_varying(s, stagetype, shadertype, modeltype)
 	return load_fs_varying(s)
 end
 
-local function gen_uniform(s)
+local function gen_uniform(s, stage)
 	local uniform = {}
 	local map = {}
 	local u = s.uniform[1]
 	for i,item in ipairs(u) do
+		local uname = stage == "vs" and "u_" .. item.name or "u_fs" .. item.name
 		if item.array then
-			table.insert(uniform, string.format("uniform %s u_%s[%d];",item.type, item.name, item.array))
+			table.insert(uniform, string.format("uniform %s %s[%d];",item.type, uname, item.array))
 		else
-			table.insert(uniform, string.format("uniform %s u_%s;",item.type, item.name))
+			table.insert(uniform, string.format("uniform %s %s;",item.type, uname))
 		end
-		map[u.name .. "." .. item.name] = "u_" .. item.name
+		map[u.name .. "." .. item.name] = uname
 	end
 	return {
 		uniform = table.concat(uniform, "\n"),
@@ -261,7 +262,7 @@ $source
 local function genshader(fullname, stagetype, type, modeltype)
 	local s = gen(fullname)
 	local varying = gen_varying(s, stagetype, type, modeltype)
-	local uniform = gen_uniform(s)
+	local uniform = gen_uniform(s, stagetype)
 	local texture = gen_texture(s)
 
 	local func = s.func
