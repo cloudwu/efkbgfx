@@ -4,7 +4,6 @@ bin
 .vscode
 shaders/*.bin
 shaders/*.hlsl
-shaders/*.sc
 examples/cube/shaders/*.bin
 examples/cube/shaders/*.hlsl
 *.dll

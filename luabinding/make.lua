@@ -16,7 +16,7 @@ lm:source_set "source_effekseer_callback" {
     },
     deps = {
         "efkbgfx_lib",
-        "efkbgfx_shaders",
+        "efkbgfx_shader_binaries",
     }
 }
 

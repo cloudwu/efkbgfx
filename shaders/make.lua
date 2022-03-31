@@ -86,18 +86,16 @@ end
 
 local files_built = {}
 
-local function build_eff_shader(input, output, defines, stagetype, shadertype, modeltype)
+local function build_eff_shader(input, scfile, output, defines, stagetype, shadertype, modeltype)
     if files_built[input:string()] then
         return
     end
 
-    local bgfxsrc = fs.path(output):replace_extension "sc"
-
-    files_built[input:string()] = bgfxsrc
-    cvt2bgfxshader(input, bgfxsrc, shadertype, stagetype, modeltype)
+    files_built[input:string()] = scfile
+    cvt2bgfxshader(input, scfile, shadertype, stagetype, modeltype)
 
     local varying_filename = ("%s_%s_varying.def.sc"):format(modeltype, shadertype)
-    local varying_path = bgfxsrc:parent_path() / varying_filename
+    local varying_path = scfile:parent_path() / varying_filename
     local cfg = {
         stage = stagetype,
         optimizelevel = 3,
@@ -107,7 +105,7 @@ local function build_eff_shader(input, output, defines, stagetype, shadertype, m
         },
         defines = defines,
         varying_path = varying_path:string(),
-        input = bgfxsrc:string(),
+        input = scfile:string(),
         output = output:string(),
     }
 
@@ -119,22 +117,37 @@ local function build_eff_shader(input, output, defines, stagetype, shadertype, m
     lm:build(cmd)
 end
 
-local outshaders = {}
+local shader_target_files = {
+    inputs = {},
+    scfiles = {},
+    outputs = {},
+}
+
 for modeltype, shaders in pairs(shaderfiles) do
     for st, shader in pairs(shaders) do
         for _, stage in ipairs{"vs", "fs"} do
             local filename = shader[stage]
-            local infile = vulkan_shader_dir / filename
-            local outfile = shader_output_dir / fs.path(filename):replace_extension "bin"
-            build_eff_shader(infile, outfile, shader.defines, stage, st, modeltype)
-            outshaders[#outshaders+1] = outfile:string()
+            local input = vulkan_shader_dir / filename
+            local scfile = shader_output_dir / fs.path(filename):replace_extension "sc"
+            local output = fs.path(scfile):replace_extension "bin"
+            shader_target_files.inputs[#shader_target_files.inputs+1] = input
+            shader_target_files.scfiles[#shader_target_files.scfiles+1] = scfile
+            shader_target_files.outputs[#shader_target_files.outputs+1] = output
+            build_eff_shader(input, scfile, output, shader.defines, stage, st, modeltype)
         end
     end
 end
 
-lm:phony "efkbgfx_shaders" {
+lm:phony "efxbgfx_shaders" {
     deps = {
         "efkmat"
     },
-    input = outshaders,
+    input = shader_target_files.scfiles,
+}
+
+lm:phony "efkbgfx_shader_binaries" {
+    deps = {
+        "efxbgfx_shaders",
+    },
+    input = shader_target_files.outputs,
 }
