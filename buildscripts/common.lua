@@ -3,17 +3,37 @@ local fs = require "bee.filesystem"
 
 lm.mode   = "debug"
 
-EfkRootDir= fs.path(lm.EfkDir or "../")
+local function get_path(p, def_p)
+    return p and fs.path(p) or def_p
+end
+
+EfkRootDir= get_path(lm.EfkDir, fs.path "../")
 EfkDir    = EfkRootDir / "Effekseer"
 EfkSrc    = EfkDir / "Dev/Cpp"
 
-BgfxDir   = EfkRootDir / "bgfx"
-BxDir     = EfkRootDir / "bx"
-BimgDir   = EfkRootDir / "bimg"
+BgfxDir   = get_path(lm.BgfxDir,    EfkRootDir / "bgfx")
+BxDir     = get_path(lm.BxDir,      EfkRootDir / "bx")
+BimgDir   = get_path(lm.BimgDir,    EfkRootDir / "bimg")
 
-BgfxBinDir   = BgfxDir / ".build/win64_vs2022/bin"
-BgfxNameSuffix   = lm.mode == "debug" and "Debug" or "Release"
-Shaderc = BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)
+BgfxBinDir = get_path(lm.BgfxBinDir, BgfxDir / ".build/win64_vs2022/bin")
+BgfxNameSuffix = lm.mode == "debug" and "Debug" or "Release"
+
+local function find_shaderc()
+    local shaderc = BgfxBinDir / "shaderc.exe"
+    if not fs.exists(shaderc) then
+        shaderc = BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)
+        if not fs.exists(shaderc) then
+            error(table.concat({
+                "need bgfx shaderc tool, tried:",
+                (BgfxBinDir / "shaderc.exe"):string(),
+                (BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)):string()
+            }, "\n"))
+        end
+    end
+    return shaderc
+end
+
+Shaderc = find_shaderc()
 
 Plat = (function ()
     if lm.os == "windows" then

@@ -3,7 +3,7 @@ local fs = require "bee.filesystem"
 
 package.path = "./?.lua;../?.lua"
 lm.EfkDir = "../../"
-
+lm.BgfxBinDir = "../../bgfx/.build/win64_vs2022/bin"
 require "buildscripts.common"
 
 local bx_libname    = "bx" .. BgfxNameSuffix
@@ -16,6 +16,13 @@ local alloca_file_includes = {
     mingw = BxDir / "include/compat/mingw",
 }
 
+local bgfxdll_name  = "bgfx-shared-lib" .. BgfxNameSuffix .. ".dll"
+
+lm:copy "copy_bgfx" {
+    input   = (BgfxBinDir / bgfxdll_name):string(),
+    output  = "build/bin/" .. bgfxdll_name
+}
+
 lm:import "../efkmatc/make.lua"
 lm:import "../renderer/make.lua"
 lm:import "../shaders/make.lua"
@@ -25,6 +32,10 @@ lm:exe "example"{
         "efklib",
         "efkbgfx",
         "efkmat",
+        "copy_bgfx",
+    },
+    bindir = {
+        lm.workdir .. ("/bin/%s/%s"):format(Plat, lm.mode),
     },
     includes = {
         alloca_file_includes[Plat]:string(),
@@ -92,6 +103,6 @@ for _, s in ipairs{
         input = input:string(),
         output = output:string(),
     }
-    local cmd = sc.gen_cmd((cwd / Shaderc):string(), cfg)
+    local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     lm:build(cmd)
 end

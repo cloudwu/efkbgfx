@@ -522,15 +522,15 @@ public:
 				Shader * s = m_shaders[(int)t];
 				typedef EffekseerRenderer::ModelRendererVertexConstantBuffer<MaxInstanced> VCB;
 				s->SetVertexConstantBufferSize(sizeof(VCB));
-#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-					VUNIFORM("u_mCameraProj", 	CameraMatrix)
-					VUNIFORM("u_mModel_Inst", 	ModelMatrix)
-					VUNIFORM("u_fUV", 			ModelUV)
-					VUNIFORM("u_fModelColor", 	ModelColor)
-					VUNIFORM("u_fLightDirection",LightDirection)
-					VUNIFORM("u_fLightColor", 	LightColor)
-					VUNIFORM("u_fLightAmbient", LightAmbientColor)
-					VUNIFORM("u_mUVInversed", 	UVInversed)
+#define VUNIFORM(uname, fname) m_render->AddUniform(s, #uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+					VUNIFORM(u_mCameraProj, 	CameraMatrix)
+					VUNIFORM(u_mModel_Inst, 	ModelMatrix)
+					VUNIFORM(u_fUV, 			ModelUV)
+					VUNIFORM(u_fModelColor, 	ModelColor)
+					VUNIFORM(u_fLightDirection,	LightDirection)
+					VUNIFORM(u_fLightColor, 	LightColor)
+					VUNIFORM(u_fLightAmbient, 	LightAmbientColor)
+					VUNIFORM(u_mUVInversed, 	UVInversed)
 #undef VUNIFORM
 			}
 			for (auto t : {
@@ -541,23 +541,23 @@ public:
 				Shader * s = m_shaders[(int)t];
 				typedef EffekseerRenderer::ModelRendererAdvancedVertexConstantBuffer<MaxInstanced> VCB;
 				s->SetVertexConstantBufferSize(sizeof(VCB));
-#define VUNIFORM(uname, fname) m_render->AddUniform(s, uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
-					VUNIFORM("u_mCameraProj", 		CameraMatrix)
-					VUNIFORM("u_mModel_Inst", 		ModelMatrix)
-					VUNIFORM("u_fUV", 				ModelUV)
-					VUNIFORM("u_fAlphaUV", 			ModelAlphaUV)
-					VUNIFORM("u_fUVDistortionUV", 	ModelUVDistortionUV)
-					VUNIFORM("u_fBlendUV", 			ModelBlendUV)
-					VUNIFORM("u_fBlendAlphaUV", 	ModelBlendAlphaUV)
-					VUNIFORM("u_fBlendUVDistortionUV", ModelBlendUVDistortionUV)
-					VUNIFORM("u_fFlipbookParameter", ModelFlipbookParameter)
-					VUNIFORM("u_fFlipbookIndexAndNextRate", ModelFlipbookIndexAndNextRate)
-					VUNIFORM("u_fModelAlphaThreshold", 	ModelAlphaThreshold)
-					VUNIFORM("u_fModelColor", 		ModelColor)
-					VUNIFORM("u_fLightDirection", 	LightDirection)
-					VUNIFORM("u_fLightColor", 		LightColor)
-					VUNIFORM("u_fLightAmbient", 	LightAmbientColor)
-					VUNIFORM("u_mUVInversed", 		UVInversed)
+#define VUNIFORM(uname, fname) m_render->AddUniform(s, #uname, Shader::UniformType::Vertex, offsetof(VCB, fname));
+					VUNIFORM(u_mCameraProj, 		CameraMatrix)
+					VUNIFORM(u_mModel_Inst, 		ModelMatrix)
+					VUNIFORM(u_fUV, 				ModelUV)
+					VUNIFORM(u_fAlphaUV, 			ModelAlphaUV)
+					VUNIFORM(u_fUVDistortionUV, 	ModelUVDistortionUV)
+					VUNIFORM(u_fBlendUV, 			ModelBlendUV)
+					VUNIFORM(u_fBlendAlphaUV, 		ModelBlendAlphaUV)
+					VUNIFORM(u_fBlendUVDistortionUV,ModelBlendUVDistortionUV)
+					VUNIFORM(u_fFlipbookParameter, 	ModelFlipbookParameter)
+					VUNIFORM(u_fFlipbookIndexAndNextRate, ModelFlipbookIndexAndNextRate)
+					VUNIFORM(u_fModelAlphaThreshold,ModelAlphaThreshold)
+					VUNIFORM(u_fModelColor, 		ModelColor)
+					VUNIFORM(u_fLightDirection, 	LightDirection)
+					VUNIFORM(u_fLightColor, 		LightColor)
+					VUNIFORM(u_fLightAmbient, 	LightAmbientColor)
+					VUNIFORM(u_mUVInversed, 		UVInversed)
 #undef VUNIFORM
 			}
 			m_render->SetPixelConstantBuffer(m_shaders);
@@ -757,23 +757,23 @@ private:
 			Shader * s = shaders[id];
 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBuffer));
 #define PUNIFORM(uname, fname) AddUniform(s, #uname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBuffer, fname));
-			PUNIFORM(u_fLightDirection, 		LightDirection)
-			PUNIFORM(u_fLightColor, 			LightColor)
-			PUNIFORM(u_fLightAmbient, 			LightAmbientColor)
-			PUNIFORM(u_fFlipbookParameter, 		FlipbookParam)
-			PUNIFORM(u_fUVDistortionParameter, 	UVDistortionParam)
-			PUNIFORM(u_fBlendTextureParameter, 	BlendTextureParam)
-			PUNIFORM(u_fCameraFrontDirection, 	CameraFrontDirection)
-			PUNIFORM(u_fFalloffParameter, 		FalloffParam.Buffer)
-			PUNIFORM(u_fFalloffBeginColor,		FalloffParam.BeginColor)
-			PUNIFORM(u_fFalloffEndColor,  		FalloffParam.EndColor)
-			PUNIFORM(u_fEmissiveScaling, 		EmmisiveParam)
-			PUNIFORM(u_fEdgeParameter, 			EdgeParam)
-			PUNIFORM(u_softParticleParam, 		SoftParticleParam.softParticleParams)
-			PUNIFORM(u_reconstructionParam1, 	SoftParticleParam.reconstructionParam1)
-			PUNIFORM(u_reconstructionParam2, 	SoftParticleParam.reconstructionParam2)
-			PUNIFORM(u_mUVInversedBack, 		UVInversedBack)
-			PUNIFORM(u_miscFlags, 				MiscFlags)
+			PUNIFORM(u_fsfLightDirection, 		LightDirection)
+			PUNIFORM(u_fsfLightColor, 			LightColor)
+			PUNIFORM(u_fsfLightAmbient, 		LightAmbientColor)
+			PUNIFORM(u_fsfFlipbookParameter, 	FlipbookParam)
+			PUNIFORM(u_fsfUVDistortionParameter,UVDistortionParam)
+			PUNIFORM(u_fsfBlendTextureParameter,BlendTextureParam)
+			PUNIFORM(u_fsfCameraFrontDirection, CameraFrontDirection)
+			PUNIFORM(u_fsfFalloffParameter, 	FalloffParam.Buffer)
+			PUNIFORM(u_fsfFalloffBeginColor,	FalloffParam.BeginColor)
+			PUNIFORM(u_fsfFalloffEndColor,  	FalloffParam.EndColor)
+			PUNIFORM(u_fsfEmissiveScaling, 		EmmisiveParam)
+			PUNIFORM(u_fsfEdgeParameter, 		EdgeParam)
+			PUNIFORM(u_fssoftParticleParam, 	SoftParticleParam.softParticleParams)
+			PUNIFORM(u_fsreconstructionParam1, 	SoftParticleParam.reconstructionParam1)
+			PUNIFORM(u_fsreconstructionParam2, 	SoftParticleParam.reconstructionParam2)
+			PUNIFORM(u_fsmUVInversedBack, 		UVInversedBack)
+			PUNIFORM(u_fsmiscFlags, 			MiscFlags)
 #undef PUNIFORM
 		}
 		for (auto t: {
@@ -784,14 +784,14 @@ private:
 			Shader * s = shaders[id];
 			s->SetPixelConstantBufferSize(sizeof(EffekseerRenderer::PixelConstantBufferDistortion));
 #define PUNIFORM(uname, fname) AddUniform(s, #uname, Shader::UniformType::Pixel, offsetof(EffekseerRenderer::PixelConstantBufferDistortion, fname));
-			PUNIFORM(u_g_scale, 				DistortionIntencity)
-			PUNIFORM(u_mUVInversedBack, 		UVInversedBack)
-			PUNIFORM(u_fFlipbookParameter, 		FlipbookParam)
-			PUNIFORM(u_fUVDistortionParameter, 	UVDistortionParam)
-			PUNIFORM(u_fBlendTextureParameter, 	BlendTextureParam)
-			PUNIFORM(u_softParticleParam, 		SoftParticleParam.softParticleParams)
-			PUNIFORM(u_reconstructionParam1, 	SoftParticleParam.reconstructionParam1)
-			PUNIFORM(u_reconstructionParam2, 	SoftParticleParam.reconstructionParam2)
+			PUNIFORM(u_fsg_scale, 				DistortionIntencity)
+			PUNIFORM(u_fsmUVInversedBack, 		UVInversedBack)
+			PUNIFORM(u_fsfFlipbookParameter, 	FlipbookParam)
+			PUNIFORM(u_fsfUVDistortionParameter,UVDistortionParam)
+			PUNIFORM(u_fsfBlendTextureParameter,BlendTextureParam)
+			PUNIFORM(u_fssoftParticleParam, 	SoftParticleParam.softParticleParams)
+			PUNIFORM(u_fsreconstructionParam1, 	SoftParticleParam.reconstructionParam1)
+			PUNIFORM(u_fsreconstructionParam2, 	SoftParticleParam.reconstructionParam2)
 #undef PUNIFORM
 		}
 	}
@@ -1046,7 +1046,7 @@ public:
 		m_currentlayout = shader->m_layout;
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
-		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), 0, spriteCount*4, m_currentlayout);
+		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), vertexOffset, spriteCount*4, m_currentlayout);
 		const uint32_t indexCount = spriteCount * 6;
 		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
@@ -1055,7 +1055,6 @@ public:
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
-		//BGFX(set_vertex_buffer)(0, m_currentVertexBuffer, 0, vertexCount);
 		BGFX(set_instance_count)(instanceCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}

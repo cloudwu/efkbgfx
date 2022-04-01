@@ -7,6 +7,8 @@
 #include <bx/math.h>
 #include <bx/readerwriter.h>
 
+#include <bimg/decode.h>
+
 #include <common.h>
 #include <bgfx_utils.h>
 #include <bgfx/c99/bgfx.h>
@@ -268,8 +270,7 @@ private:
 	}
 
 	static const bgfx::Memory*
-	loadMem(bx::FileReaderI* _reader, const char* _filePath)
-	{
+	loadMem(bx::FileReaderI* _reader, const char* _filePath) {
 		if (bx::open(_reader, _filePath) )
 		{
 			uint32_t size = (uint32_t)bx::getSize(_reader);
@@ -294,19 +295,19 @@ private:
 			return _FS;\
 		}
 
-		CHECK_SHADER("sprite_unlit", 			"shaders/sprite_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
-		CHECK_SHADER("sprite_lit", 				"shaders/sprite_lit_vs.fx.bin", 		"shaders/model_lit_ps.fx.bin");
-		CHECK_SHADER("sprite_distortion", 		"shaders/sprite_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_unlit", 		"shaders/ad_sprite_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_lit", 			"shaders/ad_sprite_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
-		CHECK_SHADER("sprite_adv_distortion", 	"shaders/ad_sprite_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
+		CHECK_SHADER("sprite_unlit", 			"../shaders/sprite_unlit_vs.fx.bin", 		"../shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_lit", 				"../shaders/sprite_lit_vs.fx.bin", 			"../shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_distortion", 		"../shaders/sprite_distortion_vs.fx.bin", 	"../shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_unlit", 		"../shaders/ad_sprite_unlit_vs.fx.bin", 	"../shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_lit", 			"../shaders/ad_sprite_lit_vs.fx.bin", 		"../shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("sprite_adv_distortion", 	"../shaders/ad_sprite_distortion_vs.fx.bin","../shaders/ad_model_distortion_ps.fx.bin");
 
-		CHECK_SHADER("model_unlit", 			"shaders/model_unlit_vs.fx.bin", 		"shaders/model_unlit_ps.fx.bin");
-		CHECK_SHADER("model_lit", 				"shaders/model_lit_vs.fx.bin", 			"shaders/model_lit_ps.fx.bin");
-		CHECK_SHADER("model_distortion", 		"shaders/model_distortion_vs.fx.bin", 	"shaders/model_distortion_ps.fx.bin");
-		CHECK_SHADER("model_adv_unlit", 		"shaders/ad_model_unlit_vs.fx.bin", 	"shaders/ad_model_unlit_ps.fx.bin");
-		CHECK_SHADER("model_adv_lit", 			"shaders/ad_model_lit_vs.fx.bin", 		"shaders/ad_model_lit_ps.fx.bin");
-		CHECK_SHADER("model_adv_distortion", 	"shaders/ad_model_distortion_vs.fx.bin","shaders/ad_model_distortion_ps.fx.bin");
+		CHECK_SHADER("model_unlit", 			"../shaders/model_unlit_vs.fx.bin", 		"../shaders/model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_lit", 				"../shaders/model_lit_vs.fx.bin", 			"../shaders/model_lit_ps.fx.bin");
+		CHECK_SHADER("model_distortion", 		"../shaders/model_distortion_vs.fx.bin", 	"../shaders/model_distortion_ps.fx.bin");
+		CHECK_SHADER("model_adv_unlit", 		"../shaders/ad_model_unlit_vs.fx.bin", 		"../shaders/ad_model_unlit_ps.fx.bin");
+		CHECK_SHADER("model_adv_lit", 			"../shaders/ad_model_lit_vs.fx.bin", 		"../shaders/ad_model_lit_ps.fx.bin");
+		CHECK_SHADER("model_adv_distortion", 	"../shaders/ad_model_distortion_vs.fx.bin", "../shaders/ad_model_distortion_ps.fx.bin");
 
 		assert(false && "invalid shader name and type name");
 		return nullptr;
@@ -326,21 +327,58 @@ private:
 		return s.rfind(".png") != std::string::npos;
 	}
 
+	static bgfx::TextureHandle
+	loadPng(const char* filename, uint64_t state){
+		const bgfx::Memory* mem = loadMem(entry::getFileReader(), filename);
+		auto image = bimg::imageParse(entry::getAllocator(), mem->data, mem->size, bimg::TextureFormat::Enum(bgfx::TextureFormat::Count), nullptr);
+		assert(image && "invalid png file");
+		bimg::ImageContainer *dstimage = nullptr;
+		if (image->m_format == bgfx::TextureFormat::RG8){
+			dstimage = bimg::imageAlloc(entry::getAllocator()
+				, bimg::TextureFormat::RGBA8
+				, uint16_t(image->m_width)
+				, uint16_t(image->m_height)
+				, uint16_t(image->m_depth)
+				, image->m_numLayers
+				, image->m_cubeMap
+				, false
+			);
+			auto unpack = [](float* dst, const void* src){
+				const uint8_t* _src = (const uint8_t*)src;
+				dst[0] = dst[1] = dst[2] = bx::fromUnorm(_src[0], 255.0f);
+				if (_src[1] != 255 && _src[1] != 0){
+					int debug = 0;
+				}
+				dst[3] = bx::fromUnorm(_src[1], 255.0f);
+			};
+			const auto srcbpp = 16;
+			const auto dstbpp = 32;
+			bimg::imageConvert(dstimage->m_data, dstbpp, bx::packRgba8, 
+								image->m_data, srcbpp, unpack, 
+								image->m_width, image->m_height, image->m_depth, 
+								image->m_width * (srcbpp/8), image->m_width * (dstbpp/8));
+		} else {
+			dstimage = bimg::imageConvert(entry::getAllocator(), bimg::TextureFormat::RGBA8, *image, false);
+		}
+
+		imageFree(image);
+		
+		auto h = bgfx::createTexture2D(
+				(uint16_t)dstimage->m_width
+			, (uint16_t)dstimage->m_height
+			, false
+			, 1
+			, bgfx::TextureFormat::BGRA8
+			, state
+			, bgfx::copy(dstimage->m_data, dstimage->m_size)
+			);
+		imageFree(dstimage);
+		return h;
+	}
+
 	static bgfx::TextureHandle createTexture(const char* filename, uint64_t state){
 		if (isPngFile(filename)){
-			auto image = imageLoad(filename, bgfx::TextureFormat::RGBA8);
-			assert(image && "invalid png file");
-			auto h = bgfx::createTexture2D(
-				  (uint16_t)image->m_width
-				, (uint16_t)image->m_height
-				, false
-				, 1
-				, bgfx::TextureFormat::BGRA8
-				, state
-				, bgfx::copy(image->m_data, image->m_size)
-				);
-			imageFree(image);
-			return h;
+			return loadPng(filename, state);
 		}
 
 		return bgfx::createTexture(loadMem(entry::getFileReader(), filename), state);
