@@ -7,11 +7,11 @@ A bgfx renderer for effekseer runtime
 Status
 ======
 
-It's ready for use, and it keeps up with the latest versions of bgfx and effekseer.
+It's ready to use, and it keeps up with the latest versions of bgfx and effekseer.
 
 All the predefined materials works, but user defined materials are not supported now. It will be supported in future.
 
-The callback APIs will change in future , but it will always be simple enough.
+The callback APIs may change in future , but it will always be simple enough.
 
 Contributors are welcome.
 
