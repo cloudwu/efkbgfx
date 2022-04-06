@@ -23,40 +23,118 @@ namespace EffekseerRendererBGFX {
 
 static const int SHADERCOUNT = (int)EffekseerRenderer::RendererShaderType::Material;
 
-// VertexBuffer for Renderer
-class TransientVertexBuffer : public EffekseerRenderer::VertexBufferBase {
+// DynamicVertexBuffer for Renderer
+class DynamicVertexBuffer : public EffekseerRenderer::VertexBufferBase {
 private:
-	bgfx_transient_vertex_buffer_t m_buffer;
+	bgfx_interface_vtbl_t* m_bgfx{nullptr};
+	bgfx_vertex_layout_t m_layout;
+	bool m_ringBufferLock{false};
+    int32_t m_ringLockedOffset{0};
+    int32_t m_ringLockedSize{0};
+	bool m_transient{false};
+	bgfx_transient_vertex_buffer_t m_transient_buffer;
+	bgfx_dynamic_vertex_buffer_handle_t m_dynamic_buffer;
+	std::unique_ptr<uint8_t[]> m_lockedResource;
 public:
-	TransientVertexBuffer(int size) : VertexBufferBase(size, true) {}
-	virtual ~TransientVertexBuffer() override = default;
-	bgfx_transient_vertex_buffer_t * GetInterface() {
-		return &m_buffer;
+	DynamicVertexBuffer(bgfx_interface_vtbl_t* bgfx, int count, const bgfx_vertex_layout_t& layout)
+		: VertexBufferBase(count * m_layout.stride, true)
+		, m_bgfx{bgfx}
+		, m_layout{layout}
+	{
+		if (!m_transient) {
+			m_dynamic_buffer = BGFX(create_dynamic_vertex_buffer)(count, &layout, BGFX_BUFFER_NONE);
+			m_lockedResource = std::make_unique<uint8_t[]>(m_size);
+		}
+	}
+	virtual ~DynamicVertexBuffer() override {
+		if (!m_transient) {
+			BGFX(destroy_dynamic_vertex_buffer)(m_dynamic_buffer);
+		}
+	}
+	bool IsUseTransient() const {
+		return m_transient;
+	}
+	bgfx_dynamic_vertex_buffer_handle_t GetDynamicBuffer() {
+		return m_dynamic_buffer;
+	}
+	bgfx_transient_vertex_buffer_t* GetTransientBuffer() {
+		return &m_transient_buffer;
 	}
 	bool RingBufferLock(int32_t size, int32_t& offset, void*& data, int32_t alignment) override {
 		assert(!m_isLock);
-		m_isLock = true;
-		m_offset = size;
-		data = m_buffer.data;
-		offset = 0;
-		(void)alignment;
+		assert(!m_ringBufferLock);
+
+		if (size > m_size)
+        	return false;
+
+		m_vertexRingOffset = GetNextAliginedVertexRingOffset(m_vertexRingOffset, alignment);
+
+		if (RequireResetRing(m_vertexRingOffset, size, m_size)) {
+			offset = 0;
+			m_ringLockedOffset = 0;
+			m_ringLockedSize = size;
+
+			m_vertexRingOffset = size;
+		} else {
+			offset = m_vertexRingOffset;
+			m_ringLockedOffset = offset;
+			m_ringLockedSize = size;
+
+			m_vertexRingOffset += size;
+		}
+		if (m_transient) {
+			data = m_transient_buffer.data + m_ringLockedOffset;
+		} else {
+			data = m_lockedResource.get();
+			m_resource = m_lockedResource.get();
+		}
+		m_ringBufferLock = true;
+
 		return true;
 	}
 	bool TryRingBufferLock(int32_t size, int32_t& offset, void*& data, int32_t alignment) override {
 		// Never used
+		if ((int32_t)m_vertexRingOffset + size > m_size) {
+			return false;
+		}
 		return RingBufferLock(size, offset, data, alignment);
 	}
 	void Lock() override {
 		assert(!m_isLock);
+		assert(!m_ringBufferLock);
+
+		if(m_transient) {
+			m_resource = m_transient_buffer.data;
+		} else {
+			m_resource = m_lockedResource.get();
+		}
 		m_isLock = true;
-		m_offset = 0;
-		m_resource = m_buffer.data;
 	}
 	void Unlock() override {
-		assert(m_isLock);
-		m_offset = 0;
+		assert(m_isLock || m_ringBufferLock);
+		if (!m_transient) {
+			if (m_isLock) {
+				BGFX(update_dynamic_vertex_buffer)(m_dynamic_buffer, 0, BGFX(copy)(m_resource, m_size));
+			}
+
+			if (m_ringBufferLock) {
+				assert(m_ringLockedOffset % 4 == 0);
+				BGFX(update_dynamic_vertex_buffer)(m_dynamic_buffer, m_ringLockedOffset / m_layout.stride, BGFX(copy)(m_resource, m_ringLockedSize));
+			}
+		}
 		m_resource = nullptr;
 		m_isLock = false;
+		m_ringBufferLock = false;
+	}
+	void ResetRingOffset(int32_t squareMaxCount) {
+		if (!m_transient) {
+			return;
+		}
+		// Alloc TransientVertexBuffer
+		BGFX(alloc_transient_vertex_buffer)(&m_transient_buffer, EffekseerRenderer::GetMaximumVertexSizeInAllTypes() * squareMaxCount, &m_layout);
+		// for different layout share buffer
+		assert(m_transient_buffer.startVertex == 0);
+		m_vertexRingOffset = 0;
 	}
 };
 
@@ -599,14 +677,13 @@ private:
 	EffekseerRenderer::DistortingCallback* m_distortingCallback = nullptr;
 	StaticIndexBuffer* m_indexBuffer = nullptr;
 	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
-	TransientVertexBuffer* m_vertexBuffer = nullptr;
+	DynamicVertexBuffer* m_dynamicVertexBuffer = nullptr;
 	Shader* m_currentShader = nullptr;
 	Effekseer::Backend::TextureRef m_background = nullptr;
 	Effekseer::Backend::TextureRef m_depth = nullptr;
 	int32_t m_squareMaxCount = 0;
 	int32_t m_indexBufferStride = 2;
 	bgfx_view_id_t m_viewid = 0;
-	bgfx_vertex_layout_t m_maxlayout;
 	bgfx_vertex_layout_t m_modellayout;
 	bgfx_vertex_layout_handle_t m_currentlayout;
 	Shader * m_shaders[SHADERCOUNT];
@@ -744,7 +821,12 @@ private:
 		BGFX(vertex_layout_end)(layout);
 	}
 	void InitVertexBuffer() {
-		m_vertexBuffer = new TransientVertexBuffer(m_squareMaxCount * m_maxlayout.stride);
+		// 4 byte layout, for ring buffer lock
+		bgfx_vertex_layout_t layout;
+		BGFX(vertex_layout_begin)(&layout, BGFX_RENDERER_TYPE_NOOP);
+		BGFX(vertex_layout_add)(&layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, true);
+		BGFX(vertex_layout_end)(&layout);
+		m_dynamicVertexBuffer = new DynamicVertexBuffer(m_bgfx, EffekseerRenderer::GetMaximumVertexSizeInAllTypes() * m_squareMaxCount, layout);
 	}
 	void SetPixelConstantBuffer(Shader *shaders[]) const {
 		for (auto t: {
@@ -831,7 +913,6 @@ private:
 	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
-		m_maxlayout.stride = 0;
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
 			EffekseerRenderer::RendererShaderType::Lit,
@@ -842,9 +923,6 @@ private:
 		}) {
 			bgfx_vertex_layout_t layout;
 			GenVertexLayout(&layout, t);
-			if (layout.stride > m_maxlayout.stride) {
-				m_maxlayout = layout;
-			}
 			Shader * s = new Shader(this, BGFX(create_vertex_layout)(&layout));
 			int id = (int)t;
 			m_shaders[id] = s;
@@ -918,7 +996,7 @@ public:
 			ES_SAFE_DELETE(shader);
 		}
 		ES_SAFE_DELETE(m_indexBuffer);
-		ES_SAFE_DELETE(m_vertexBuffer);
+		ES_SAFE_DELETE(m_dynamicVertexBuffer);
 	}
 
 	void OnLostDevice() override {}
@@ -950,9 +1028,7 @@ public:
 		m_restorationOfStates = flag;
 	}
 	bool BeginRendering() override {
-		// Alloc TransientVertexBuffer
-		bgfx_transient_vertex_buffer_t * tvb = m_vertexBuffer->GetInterface();
-		BGFX(alloc_transient_vertex_buffer)(tvb, m_squareMaxCount, &m_maxlayout);
+		m_dynamicVertexBuffer->ResetRingOffset(m_squareMaxCount);
 
 		GetImpl()->CalculateCameraProjectionMatrix();
 
@@ -968,8 +1044,8 @@ public:
 		m_standardRenderer->ResetAndRenderingIfRequired();
 		return true;
 	}
-	TransientVertexBuffer* GetVertexBuffer() {
-		return m_vertexBuffer;
+	DynamicVertexBuffer* GetVertexBuffer() {
+		return m_dynamicVertexBuffer;
 	}
 	StaticIndexBuffer* GetIndexBuffer() {
 		return m_indexBuffer;
@@ -1028,8 +1104,8 @@ public:
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader>* GetStandardRenderer() {
 		return m_standardRenderer;
 	}
-	// Only one transient vb, set in DrawSprites() with layout
-	void SetVertexBuffer(TransientVertexBuffer* vertexBuffer, int32_t stride) {}
+	// Only one dynamic vb, set in DrawSprites() with layout
+	void SetVertexBuffer(DynamicVertexBuffer* vertexBuffer, int32_t stride) {}
 	// For ModelRenderer, See ModelRendererBase
 	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
 		(void)stride;
@@ -1046,7 +1122,12 @@ public:
 		m_currentlayout = shader->m_layout;
 	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
-		BGFX(set_transient_vertex_buffer_with_layout)(0, m_vertexBuffer->GetInterface(), vertexOffset, spriteCount*4, m_currentlayout);
+		if (m_dynamicVertexBuffer->IsUseTransient()) {
+			BGFX(set_transient_vertex_buffer_with_layout)(0, m_dynamicVertexBuffer->GetTransientBuffer(), vertexOffset, spriteCount*4, m_currentlayout);
+		} else {
+			BGFX(set_dynamic_vertex_buffer_with_layout)(0, m_dynamicVertexBuffer->GetDynamicBuffer(), vertexOffset, spriteCount*4, m_currentlayout);
+		}
+		
 		const uint32_t indexCount = spriteCount * 6;
 		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
