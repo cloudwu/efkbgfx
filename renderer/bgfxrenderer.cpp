@@ -669,6 +669,7 @@ private:
 	void InitTransientVertexBuffer() {
 		bgfx_vertex_layout_t layout;
 		BGFX(vertex_layout_begin)(&layout, BGFX_RENDERER_TYPE_NOOP);
+			BGFX(vertex_layout_add)(&layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, true);
 		BGFX(vertex_layout_end)(&layout);
 		m_tvb = BGFX(create_dynamic_vertex_buffer)(0, &layout, BGFX_BUFFER_ALLOW_RESIZE);
 	}
