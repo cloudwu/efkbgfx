@@ -455,7 +455,6 @@ private:
 			}
 			if (!m_renderer->AppendSprites(count, stride, data)) {
 				DoRendering();
-			} else {
 				m_renderer->AppendSprites(count, stride, data);
 			}
 			if (state.Collector.IsBackgroundRequiredOnFirstPass && m_renderer->GetDistortingCallback() != nullptr) {
@@ -466,6 +465,9 @@ private:
 			DoRendering();
 		}
 		void DoRendering() {
+			if (!m_renderer->NeedDraw())
+				return;
+
 			const auto& mProj = m_renderer->GetProjectionMatrix();
 			const auto& mCamera = m_renderer->GetCameraMatrix();
 			int32_t passNum = 1;
@@ -478,7 +480,16 @@ private:
 			for (int32_t passInd = 0; passInd < passNum; passInd++) {
 				Rendering_(mCamera, mProj, 0, 0, 1, passInd, m_state);
 			}
+			m_renderer->ResetDraw();
 		}
+
+		EffekseerRenderer::StandardRendererState& GetState(){
+			return m_state;
+		}
+
+		void Reset() {
+			m_state = EffekseerRenderer::StandardRendererState();
+		} 
 	};
 public:
 	class ModelRenderer : public EffekseerRenderer::ModelRendererBase {
@@ -636,10 +647,15 @@ private:
 	int32_t m_indexBufferStride = 2;
 	bgfx_view_id_t m_viewid = 0;
 	bgfx_vertex_layout_t m_modellayout;
-	bgfx_vertex_layout_t m_layout[LAYOUT_COUNT];
-	bgfx_transient_vertex_buffer_t m_tvb[LAYOUT_COUNT];
-	int m_sprite_count[LAYOUT_COUNT] = {0};
-	int m_sprite_cap[LAYOUT_COUNT] = {0};
+
+	struct VertexLayoutInfo {
+		bgfx_vertex_layout_t			layout;
+		bgfx_transient_vertex_buffer_t	tvb;
+		int offset;
+		int count;
+		int cap;
+	};
+	VertexLayoutInfo m_layouts[LAYOUT_COUNT] = {0};
 	int m_current_layout = 0;
 	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
@@ -764,6 +780,7 @@ private:
 		}
 		BGFX(vertex_layout_end)(layout);
 	}
+
 	void InitVertexLayout() {
 		bgfx_vertex_layout_t *layout = &m_modellayout;
 		BGFX(vertex_layout_begin)(layout, BGFX_RENDERER_TYPE_NOOP);
@@ -774,11 +791,12 @@ private:
 			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, false, false);
 			BGFX(vertex_layout_add)(layout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
 		BGFX(vertex_layout_end)(layout);
+		
+		GenVertexLayout(&m_layouts[LAYOUT_LIGHTING].layout, 	EffekseerRenderer::RendererShaderType::Lit);
+		GenVertexLayout(&m_layouts[LAYOUT_SIMPLE].layout, 		EffekseerRenderer::RendererShaderType::Unlit);
+		GenVertexLayout(&m_layouts[LAYOUT_ADVLIGHTING].layout, 	EffekseerRenderer::RendererShaderType::AdvancedLit);
+		GenVertexLayout(&m_layouts[LAYOUT_ADVSIMPLE].layout, 	EffekseerRenderer::RendererShaderType::AdvancedUnlit);
 
-		GenVertexLayout(&m_layout[LAYOUT_LIGHTING], EffekseerRenderer::RendererShaderType::Lit);
-		GenVertexLayout(&m_layout[LAYOUT_SIMPLE], EffekseerRenderer::RendererShaderType::Unlit);
-		GenVertexLayout(&m_layout[LAYOUT_ADVLIGHTING], EffekseerRenderer::RendererShaderType::AdvancedLit);
-		GenVertexLayout(&m_layout[LAYOUT_ADVSIMPLE], EffekseerRenderer::RendererShaderType::AdvancedUnlit);
 // todo : materials
 	}
 	void InitVertexBuffer() {
@@ -985,13 +1003,17 @@ public:
 
 		m_renderState->GetActiveState().Reset();
 		m_renderState->GetActiveState().TextureIDs.fill(0);
+		
+		m_standardRenderer->Reset();
 
 		int i;
-		for (i=0;i<LAYOUT_COUNT;i++) {
-			m_sprite_count[i] = 0;
-			m_sprite_cap[i] = 0;
+		for (i=0; i<LAYOUT_COUNT; ++i){
+			m_layouts[i].offset = 0;
+			m_layouts[i].count = 0;
+			m_layouts[i].cap = 0;
 		}
 		m_current_layout = 0;
+
 		return true;
 	}
 	bool EndRendering() override {
@@ -1072,6 +1094,13 @@ public:
 		BGFX(set_index_buffer)(indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {}
+
+	void AllocVertexBuffer() {
+		auto &info = m_layouts[m_current_layout];
+		info.offset = 0;
+		BGFX(alloc_transient_vertex_buffer)(&info.tvb, info.cap, &info.layout);
+	}
+
 	void SwitchLayout(EffekseerRenderer::RendererShaderType renderingMode) {
 		switch (renderingMode) {
 		case EffekseerRenderer::RendererShaderType::Lit :
@@ -1093,28 +1122,48 @@ public:
 			m_current_layout = LAYOUT_MATERIAL;
 			return;
 		}
-		if (m_sprite_cap[m_current_layout] == 0) {
-			m_sprite_cap[m_current_layout] = 4 * GetSquareMaxCount();
-			BGFX(alloc_transient_vertex_buffer)(&m_tvb[m_current_layout], m_sprite_cap[m_current_layout], &m_layout[m_current_layout]);
+		if (m_layouts[m_current_layout].cap == 0) {
+			m_layouts[m_current_layout].cap = 4 * GetSquareMaxCount();
+			AllocVertexBuffer();
 		}
 	}
 	bool AppendSprites(int count, int& stride, void*& data) {
-		if (m_current_layout == LAYOUT_MATERIAL)
+		if (m_current_layout == LAYOUT_MATERIAL) {
+			stride = 0;
+			data = nullptr;
 			return true;	// todo
-		stride = m_layout[m_current_layout].stride;
-		data = m_tvb[m_current_layout].data + stride * count;
-		if (count + m_sprite_count[m_current_layout] > m_sprite_cap[m_current_layout]) {
+		}
+
+		auto& layout = m_layouts[m_current_layout];
+		assert(layout.cap > 0);
+		stride = layout.tvb.stride;
+		data = layout.tvb.data + layout.count * stride;
+		if (count + layout.count > layout.cap) {
+			// full
+			AllocVertexBuffer();
 			return false;
 		}
-		m_sprite_count[m_current_layout] += count;
+		layout.count += count;
 		return true;
 	}
+
+	bool NeedDraw() {
+		return m_layouts[m_current_layout].count > 0;
+	}
+	void ResetDraw() {
+		auto& layout = m_layouts[m_current_layout];
+		layout.offset = layout.count;
+	}
 	void DrawSprites(int32_t spriteCount, int32_t vertexOffset) {
-		(void)spriteCount;	// do not use spriteCount, use m_sprite_count[] instead
+		(void)spriteCount;	// do not use spriteCount, use m_vertex_count[] instead
 		(void)vertexOffset;
-		int count = m_sprite_count[m_current_layout];
-		BGFX(set_transient_vertex_buffer)(0, &m_tvb[m_current_layout], 0, count);
-		const uint32_t indexCount = spriteCount / 4 * 6;
+
+		const auto& layout = m_layouts[m_current_layout];
+		const int offset = layout.offset;
+		const int count = layout.count - offset;
+
+		BGFX(set_transient_vertex_buffer)(0, &layout.tvb, offset, count);
+		const uint32_t indexCount = count / 4 * 6;
 		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
 		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
