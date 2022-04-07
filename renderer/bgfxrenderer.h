@@ -33,9 +33,10 @@ namespace EffekseerRendererBGFX {
 		bgfx_view_id_t viewid;
 		bgfx_interface_vtbl_t *bgfx;
 		bgfx_shader_handle_t (*shader_load)(const char *mat, const char *name, const char *type, void *ud);
-		bgfx_texture_handle_t (*texture_load)(const char *name, int srgb, void *ud);
 		bgfx_texture_handle_t (*texture_get)(int texture_type, void *parm, void *ud);	// background or depth (with param)
-		void (*texture_unload)(bgfx_texture_handle_t handle, void *ud);
+		int (*texture_load)(const char *name, int srgb, void *ud);
+		void (*texture_unload)(int id, void *ud);
+		bgfx_texture_handle_t (*texture_handle)(int id, void *ud);	// translate id to handle
 		void * ud;
 	};
 

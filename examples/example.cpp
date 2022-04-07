@@ -55,9 +55,10 @@ public:
 		EffekseerRendererBGFX::InitArgs efkArgs {
 			2048, g_defaultViewId, inter,
 			EffekseerBgfxTest::ShaderLoad,
-			EffekseerBgfxTest::TextureLoad,
 			EffekseerBgfxTest::TextureGet,
+			EffekseerBgfxTest::TextureLoad,
 			EffekseerBgfxTest::TextureUnload,
+			EffekseerBgfxTest::TextureHandle,
 			this,
 		};
 
@@ -404,15 +405,21 @@ private:
 		return {BGFX_INVALID_HANDLE};
 	}
 
-	static bgfx_texture_handle_t TextureLoad(const char *name, int srgb, void *ud){
+	static int TextureLoad(const char *name, int srgb, void *ud){
 		const uint64_t state = (srgb ? BGFX_TEXTURE_SRGB : BGFX_TEXTURE_NONE)|BGFX_SAMPLER_NONE;
 		auto handle = createTexture(name, state);
 		bgfx::setName(handle, name);
-		return {handle.idx};
+		if (handle.idx == 0xffff)
+			return -1;
+		return handle.idx;
 	}
 
-	static void TextureUnload(bgfx_texture_handle_t handle, void *ud){
-		bgfx::destroy(bgfx::TextureHandle{handle.idx});
+	static void TextureUnload(int id, void *ud){
+		bgfx::destroy(bgfx::TextureHandle{id & 0xffff});
+	}
+	static bgfx_texture_handle_t TextureHandle(int id, void *ud) {
+		bgfx_texture_handle_t ret { id & 0xffff };
+		return ret;
 	}
 private:
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;

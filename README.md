@@ -42,9 +42,10 @@ struct InitArgs {
 
 	// Some callback functions, See below for details.
 	bgfx_shader_handle_t (*shader_load)(const char *mat, const char *name, const char *type, void *ud);
-	bgfx_texture_handle_t (*texture_load)(const char *name, int srgb, void *ud);
 	bgfx_texture_handle_t (*texture_get)(int texture_type, void *parm, void *ud);	// background or depth (with param)
-	void (*texture_unload)(bgfx_texture_handle_t handle, void *ud);
+	int (*texture_load)(const char *name, int srgb, void *ud);
+	void (*texture_unload)(int id, void *ud);
+	bgfx_texture_handle_t (*texture_handle)(int id, void *ud);	// translate id to handle
 	void * ud;
 };
 ```
@@ -64,7 +65,7 @@ The predefined shaders for bgfx is at `shaders` dir, compile them with bgfx tool
 This function should return a valid bgfx shader handle.
 
 ```C
-bgfx_texture_handle_t texture_load(const char *name, int srgb, void *ud);
+int texture_load(const char *name, int srgb, void *ud);
 ```
 
 When renderer need a texture, it will call this function.
@@ -72,13 +73,20 @@ When renderer need a texture, it will call this function.
 * `srgb` true means it should be created as a SRGB texture.
 * `ud` is arguments from `InitArgs`.
 
-This function should return a valid bgfx texture handle.
+This function should return a texture id. (-1 as invalid)
+You don't need load texture immediately, and you can just alloc an id for it.
 
 ```C
-void texture_unload(bgfx_texture_handle_t handle, void *ud);
+void texture_unload(int id, void *ud);
 
 ```
 If the texture loaded by `texture_load` has not be no longer used by renderer, this function will be called.
+
+```C
+bgfx_texture_handle_t texture_handle(int id, void *ud);
+```
+
+When renderer use a texture, it will call this function to translate id to bgfx texture handle.
 
 
 ```C
