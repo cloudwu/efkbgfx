@@ -16,8 +16,9 @@ static struct handle_t invalid_handle = { 0xffff };
 #define CALLBACK_SHADER_LOAD 1
 #define CALLBACK_TEXTURE_LOAD 2
 #define CALLBACK_TEXTURE_UNLOAD 3
-#define CALLBACK_ERROR_HANDLER 4
-#define CALLBACK_TOP 4
+#define TABLE_TEXTURE_MAP 4
+#define CALLBACK_ERROR_HANDLER 5
+#define CALLBACK_TOP 5
 
 #define TEXTURE_BACKGROUND 0
 #define TEXTURE_DEPTH 1
@@ -34,6 +35,15 @@ static void
 set_callback(lua_State *L, struct callback_ud *ud, const char *name, int id) {
 	if (lua_getfield(L, 1, name) != LUA_TFUNCTION) {
 		luaL_error(L, "%s is not a function");
+	}
+	lua_xmove(L, ud->L, 1);
+	lua_replace(ud->L, id);
+}
+
+static void
+set_table(lua_State *L, struct callback_ud *ud, const char *name, int id) {
+	if (lua_getfield(L, 1, name) != LUA_TTABLE) {
+		luaL_error(L, "%s is not a table");
 	}
 	lua_xmove(L, ud->L, 1);
 	lua_replace(ud->L, id);
@@ -86,6 +96,7 @@ lcallback(lua_State *L) {
 	set_callback(L, ud, "shader_load", CALLBACK_SHADER_LOAD);
 	set_callback(L, ud, "texture_load", CALLBACK_TEXTURE_LOAD);
 	set_callback(L, ud, "texture_unload", CALLBACK_TEXTURE_UNLOAD);
+	set_table(L, ud, "texture_map", TABLE_TEXTURE_MAP);
 	if (lua_getfield(L, 1, "error") == LUA_TFUNCTION) {
 		lua_xmove(L, ud->L, 1);
 		lua_replace(ud->L, CALLBACK_ERROR_HANDLER);
@@ -139,7 +150,7 @@ texture_unload(struct handle_t handle, struct callback_ud *ud) {
 	lua_State *L = ud->L;
 	lua_pushvalue(L, CALLBACK_TEXTURE_UNLOAD);
 	lua_pushinteger(L, handle.idx);
-	if (lua_pcall(L, 2, 0, ud->error_handler) != LUA_OK) {
+	if (lua_pcall(L, 1, 0, ud->error_handler) != LUA_OK) {
 		lua_pop(L, 1);
 	}
 }
@@ -154,6 +165,30 @@ texture_get(int texture_type, void *param, struct callback_ud *ud) {
 		return ud->depth;
 	}
 	return invalid_handle;
+}
+
+static int
+llookup_texture(lua_State *L) {
+	lua_gettable(L, 1);
+	return 1;
+}
+
+static struct handle_t
+texture_handle(int id, struct callback_ud *ud) {
+	lua_State *L = ud->L;
+	lua_pushcfunction(L, llookup_texture);
+	lua_pushvalue(L, TABLE_TEXTURE_MAP);
+	lua_pushinteger(L, id);
+	if (lua_pcall(L, 2, 1, ud->error_handler) != LUA_OK) {
+		lua_pop(L, 1);
+	}
+	if (!lua_isinteger(L, -1)) {
+		struct handle_t ret = { 0xffff };
+		return ret;
+	}
+	struct handle_t ret = { lua_tointeger(L, -1) & 0xffff };
+	lua_pop(L, 1);
+	return ret;
 }
 
 static void
@@ -178,5 +213,6 @@ luaopen_effekseer_callback(lua_State *L) {
 	set_capi(L, "texture_load", (voidf)texture_load);
 	set_capi(L, "texture_get", (voidf)texture_get);
 	set_capi(L, "texture_unload", (voidf)texture_unload);
+	set_capi(L, "texture_handle", (voidf)texture_handle);
 	return 1;
 }

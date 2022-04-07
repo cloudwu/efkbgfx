@@ -58,9 +58,19 @@ class Texture : public Effekseer::Backend::Texture {
 private:
 	const RendererImplemented *m_render;
 	bgfx_texture_handle_t m_handle;
+	int m_id;
 public:
-	Texture(const RendererImplemented *render, bgfx_texture_handle_t handle) : m_render(render), m_handle(handle) {};
+	Texture(const RendererImplemented *render, bgfx_texture_handle_t handle) : m_render(render), m_handle(handle), m_id(-1) {}
+	Texture(const RendererImplemented *render, int id) : m_render(render), m_id(id) { m_handle.idx = UINT16_MAX; }
 	~Texture() override;
+	int GetId() const {
+		return m_id;
+	}
+	int RemoveId() {
+		int ret = m_id;
+		m_id = -1;
+		return ret;
+	}
 	bgfx_texture_handle_t GetInterface() const {
 		return m_handle;
 	}
@@ -111,8 +121,8 @@ class TextureLoader : public Effekseer::TextureLoader {
 private:
 	const RendererImplemented *m_render;
 	void *m_ud;
-	bgfx_texture_handle_t (*m_loader)(const char *name, int srgb, void *ud);
-	void (*m_unloader)(bgfx_texture_handle_t handle, void *ud);
+	int (*m_loader)(const char *name, int srgb, void *ud);
+	void (*m_unloader)(int id, void *ud);
 public:
 	TextureLoader(const RendererImplemented *render, InitArgs *init) : m_render(render) {
 		m_ud = init->ud;
@@ -125,15 +135,17 @@ public:
 		Effekseer::ConvertUtf16ToUtf8(buffer, MAX_PATH, path);
 		// always create gamma space texture, Effekseer will convert color in shader with MiscFlag set to convert
 		const int srgb = 0; //textureType == Effekseer::TextureType::Color;
-		bgfx_texture_handle_t handle = m_loader(buffer, srgb, m_ud);
+		int id = m_loader(buffer, srgb, m_ud);
+		if (id < 0)
+			return nullptr;
 
 		auto texture = Effekseer::MakeRefPtr<Effekseer::Texture>();
-		texture->SetBackend(Effekseer::MakeRefPtr<Texture>(m_render, handle));
+		texture->SetBackend(Effekseer::MakeRefPtr<Texture>(m_render, id));
 		return texture;
 	}
 	void Unload(Effekseer::TextureRef texture) override {
-		bgfx_texture_handle_t handle = texture->GetBackend().DownCast<Texture>()->RemoveInterface();
-		m_unloader(handle, m_ud);
+		int id = texture->GetBackend().DownCast<Texture>()->RemoveId();
+		m_unloader(id, m_ud);
 	}
 };
 
@@ -1098,6 +1110,7 @@ public:
 	void AllocVertexBuffer() {
 		auto &info = m_layouts[m_current_layout];
 		info.offset = 0;
+		info.count = 0;
 		BGFX(alloc_transient_vertex_buffer)(&info.tvb, info.cap, &info.layout);
 	}
 
@@ -1211,7 +1224,14 @@ public:
 				if (state.TextureWrapTypes[ii] == Effekseer::TextureWrapType::Clamp){
 					flags |= BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP;
 				}
-				BGFX(set_texture)(ii, sampler, tex->GetInterface(), flags);
+				int tex_id = tex->GetId();
+				bgfx_texture_handle_t handle;
+				if (tex_id < 0) {
+					handle = tex->GetInterface();
+				} else {
+					handle = m_initArgs.texture_handle(tex_id, m_initArgs.ud);
+				}
+				BGFX(set_texture)(ii, sampler, handle, flags);
 			}
 		}
 	}
