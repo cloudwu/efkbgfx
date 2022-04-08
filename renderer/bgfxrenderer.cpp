@@ -1235,7 +1235,7 @@ public:
 				} else {
 					handle = m_initArgs.texture_handle(tex_id, m_initArgs.ud);
 				}
-				BGFX(set_texture)(ii, sampler, handle, flags);
+				BGFX(encoder_set_texture)(m_encoder, ii, sampler, handle, flags);
 			}
 		}
 	}
@@ -1244,7 +1244,7 @@ public:
 		m_renderState->Update(true);
 	}
 	void SetCurrentState(uint64_t state) {
-		BGFX(set_state)(state, 0);
+		BGFX(encoder_set_state)(m_encoder, state, 0);
 	}
 	Effekseer::Backend::GraphicsDeviceRef GetGraphicsDevice() const override {
 		return m_device;
@@ -1261,6 +1261,10 @@ public:
 	}
 	// Shader API
 	bool InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
+		if (!(BGFX_HANDLE_IS_VALID(vs) && BGFX_HANDLE_IS_VALID(fs))){
+			s->m_render = nullptr;
+			return false;
+		}
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;

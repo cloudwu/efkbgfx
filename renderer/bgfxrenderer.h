@@ -5,7 +5,7 @@
 #include <Effekseer/Effekseer.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && defined(EFXBGFX_DYNAMIC_LIB)
 #	if EFXBGFX_EXPORTS 
 #		define EFXBGFX_API __declspec(dllexport)
 #	else
