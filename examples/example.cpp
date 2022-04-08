@@ -415,10 +415,10 @@ private:
 	}
 
 	static void TextureUnload(int id, void *ud){
-		bgfx::destroy(bgfx::TextureHandle{id & 0xffff});
+		bgfx::destroy(bgfx::TextureHandle{uint16_t(id & 0xffff)});
 	}
 	static bgfx_texture_handle_t TextureHandle(int id, void *ud) {
-		bgfx_texture_handle_t ret { id & 0xffff };
+		bgfx_texture_handle_t ret { uint16_t(id & 0xffff) };
 		return ret;
 	}
 private:
