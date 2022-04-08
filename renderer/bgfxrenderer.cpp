@@ -1258,6 +1258,10 @@ public:
 	}
 	// Shader API
 	bool InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
+		if (!(BGFX_HANDLE_IS_VALID(vs) && BGFX_HANDLE_IS_VALID(fs))){
+			s->m_render = nullptr;
+			return false;
+		}
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;

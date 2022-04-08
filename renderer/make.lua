@@ -47,5 +47,8 @@ lm:lib "efkbgfx_lib" {
 }
 
 lm:dll "efkbgfx" {
+    defines = {
+        "EFXBGFX_DYNAMIC_LIB=1"
+    },
     deps = {"source_efkbgfx"},
 }

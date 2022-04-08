@@ -398,7 +398,7 @@ private:
 			p->ProjectionMatrix33 = that->m_projMat.Values[2][2];
 			p->ProjectionMatrix34 = that->m_projMat.Values[2][3];
 			p->ProjectionMatrix43 = that->m_projMat.Values[3][2];
-			p->ProjectionMatrix44 = that->m_projMat.Values[4][4];
+			p->ProjectionMatrix44 = that->m_projMat.Values[3][3];
 			return {that->m_sceneDepth.idx};
 		}
 		assert(false && "invalid texture type");
