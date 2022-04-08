@@ -369,7 +369,7 @@ private:
 			, (uint16_t)dstimage->m_height
 			, false
 			, 1
-			, bgfx::TextureFormat::BGRA8
+			, bgfx::TextureFormat::RGBA8
 			, state
 			, bgfx::copy(dstimage->m_data, dstimage->m_size)
 			);
