@@ -76,7 +76,7 @@ lset_texture(lua_State *L) {
 	if (strcmp(name, "background")==0) {
 		uint16_t handle = luaL_checkinteger(L, 3) & 0xffff;
 		ud->background.idx = handle;
-	} else if (strcmp(name, "depth")) {
+	} else if (strcmp(name, "depth")==0) {
 		luaL_checktype(L, 3, LUA_TTABLE);
 		set_depth(L, ud);
 	} else {
