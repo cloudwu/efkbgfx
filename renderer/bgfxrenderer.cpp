@@ -1235,7 +1235,7 @@ public:
 				} else {
 					handle = m_initArgs.texture_handle(tex_id, m_initArgs.ud);
 				}
-				BGFX(set_texture)(ii, sampler, handle, flags);
+				BGFX(encoder_set_texture)(m_encoder, ii, sampler, handle, flags);
 			}
 		}
 	}
@@ -1244,7 +1244,7 @@ public:
 		m_renderState->Update(true);
 	}
 	void SetCurrentState(uint64_t state) {
-		BGFX(set_state)(state, 0);
+		BGFX(encoder_set_state)(m_encoder, state, 0);
 	}
 	Effekseer::Backend::GraphicsDeviceRef GetGraphicsDevice() const override {
 		return m_device;
