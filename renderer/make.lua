@@ -4,8 +4,10 @@ package.path = "./?.lua;../?.lua"
 
 require "buildscripts.common"
 
-lm.builddir = ("build/%s/%s"):format(Plat, lm.mode)
-lm.bindir   = ("bin/%s/%s"):format(Plat, lm.mode)
+lm.builddir = lm.builddir or ("build/%s/%s"):format(Plat, lm.mode)
+lm.bindir   = lm.bindir or ("bin/%s/%s"):format(Plat, lm.mode)
+
+print("efkbgfx:", lm.builddir, lm.bindir)
 
 lm:source_set "source_efklib" {
     includes = EfkLib_Includes,
@@ -37,7 +39,6 @@ lm:source_set "source_efkbgfx" {
     },
     defines = {
         "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
-        "EFXBGFX_EXPORTS=1",
         "MaxInstanced=" .. MaxInstanced,
     }
 }
@@ -48,7 +49,8 @@ lm:lib "efkbgfx_lib" {
 
 lm:dll "efkbgfx" {
     defines = {
-        "EFXBGFX_DYNAMIC_LIB=1"
+        "EFXBGFX_DYNAMIC_LIB=1",
+        "EFXBGFX_EXPORTS=1",
     },
     deps = {"source_efkbgfx"},
 }
