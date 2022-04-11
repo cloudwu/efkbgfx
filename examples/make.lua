@@ -11,6 +11,10 @@ require "buildscripts.common"
 lm.builddir = ("build/%s/%s"):format(Plat, lm.mode)
 lm.bindir = ("bin/%s/%s"):format(Plat, lm.mode)
 
+if not fs.exists(Shaderc) then
+    error(("shaderc:%s is not exist!"):format(Shaderc))
+end
+
 local bx_libname    = "bx" .. BgfxNameSuffix
 local bgfx_libname  = "bgfx" .. BgfxNameSuffix
 local bimg_libname  = "bimg" .. BgfxNameSuffix
