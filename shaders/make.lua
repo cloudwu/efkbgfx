@@ -79,6 +79,9 @@ local function cvt2bgfxshader(input, output, shadertype, stage, modeltype)
         "cmd", "/c",
         "cd", lm.workdir .. "/../efkmatc", "&&",
         "$luamake", "lua", "../efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype,
+        deps = {
+            "efkmat"
+        },
         input = input:string(),
         output = output:string(),
     }
@@ -110,12 +113,8 @@ local function build_eff_shader(input, scfile, output, defines, stagetype, shade
     }
 
     --print_cfg(cfg)
-
     local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     --print(table.concat(cmd, " "))
-    cmd.deps = {
-        "efkmat",
-    }
     lm:build(cmd)
 end
 
