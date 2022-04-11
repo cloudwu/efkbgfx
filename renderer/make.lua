@@ -25,6 +25,7 @@ lm:lib "efklib" {
 
 MaxInstanced = 20
 
+<<<<<<< HEAD
 local function create_source_efkbgfx(defines)
     return  {
         includes = {
@@ -41,6 +42,21 @@ local function create_source_efkbgfx(defines)
             "MaxInstanced=" .. MaxInstanced,
             defines,
         }
+=======
+lm:source_set "source_efkbgfx" {
+    includes = {
+        EfkLib_Includes,
+    },
+    sources = {
+        "bgfxrenderer.cpp",
+    },
+    deps = {
+        "source_efklib"
+    },
+    defines = {
+        "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
+        "MaxInstanced=" .. MaxInstanced,
+>>>>>>> e88d7517c23242cfb4fa4f625bb12649c231b1ae
     }
 end
 
@@ -56,5 +72,12 @@ lm:lib "efkbgfx_lib" {
 }
 
 lm:dll "efkbgfx" {
+<<<<<<< HEAD
+=======
+    defines = {
+        "EFXBGFX_DYNAMIC_LIB=1",
+        "EFXBGFX_EXPORTS=1",
+    },
+>>>>>>> e88d7517c23242cfb4fa4f625bb12649c231b1ae
     deps = {"source_efkbgfx"},
 }
