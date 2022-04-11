@@ -19,21 +19,14 @@ BgfxBinDir = get_path(lm.BgfxBinDir, BgfxDir / ".build/win64_vs2022/bin")
 BgfxNameSuffix = lm.mode == "debug" and "Debug" or "Release"
 
 local function find_shaderc()
-    local shaderc = BgfxBinDir / "shaderc.exe"
+    local shaderc = BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)
     if not fs.exists(shaderc) then
-        shaderc = BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)
-        if not fs.exists(shaderc) then
-            error(table.concat({
-                "need bgfx shaderc tool, tried:",
-                (BgfxBinDir / "shaderc.exe"):string(),
-                (BgfxBinDir / ("shaderc%s.exe"):format(BgfxNameSuffix)):string()
-            }, "\n"))
-        end
+        shaderc = BgfxBinDir / "shaderc.exe"
     end
     return shaderc
 end
 
-Shaderc = find_shaderc()
+Shaderc = lm.shaderc or find_shaderc()
 
 Plat = (function ()
     if lm.os == "windows" then

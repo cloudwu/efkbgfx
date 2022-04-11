@@ -131,7 +131,7 @@ for modeltype, shaders in pairs(shaderfiles) do
             local input = vulkan_shader_dir / filename
             local scfile = shader_output_dir / fs.path(filename):replace_extension "sc"
             local output = fs.path(scfile):replace_extension "bin"
-            shader_target_files.inputs[#shader_target_files.inputs+1] = input:string()
+            shader_target_files.inputs[#shader_target_files.inputs+1]   = input:string()
             shader_target_files.scfiles[#shader_target_files.scfiles+1] = scfile:string()
             shader_target_files.outputs[#shader_target_files.outputs+1] = output:string()
             build_eff_shader(input, scfile, output, shader.defines, stage, st, modeltype)
