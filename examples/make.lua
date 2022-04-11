@@ -2,9 +2,14 @@ local lm = require "luamake"
 local fs = require "bee.filesystem"
 
 package.path = "./?.lua;../?.lua"
+
+lm.mode = "debug"
 lm.EfkDir = "../../"
 lm.BgfxBinDir = "../../bgfx/.build/win64_vs2022/bin"
 require "buildscripts.common"
+
+lm.builddir = ("build/%s/%s"):format(Plat, lm.mode)
+lm.bindir = ("bin/%s/%s"):format(Plat, lm.mode)
 
 local bx_libname    = "bx" .. BgfxNameSuffix
 local bgfx_libname  = "bgfx" .. BgfxNameSuffix
@@ -16,12 +21,13 @@ local alloca_file_includes = {
     mingw = BxDir / "include/compat/mingw",
 }
 
-local bgfxdll_name  = "bgfx-shared-lib" .. BgfxNameSuffix .. ".dll"
-
-lm:copy "copy_bgfx" {
-    input   = (BgfxBinDir / bgfxdll_name):string(),
-    output  = "build/bin/" .. bgfxdll_name
-}
+if not lm.StaticBgfxLib then
+    local bgfxdll_name  = lm.BgfxSharedDll or ("bgfx-shared-lib" .. BgfxNameSuffix .. ".dll")
+    lm:copy "copy_bgfx" {
+        input   = (BgfxBinDir / bgfxdll_name):string(),
+        output  = lm.bindir .. "/" .. bgfxdll_name,
+    }
+end
 
 lm:import "../efkmatc/make.lua"
 lm:import "../renderer/make.lua"
@@ -33,9 +39,6 @@ lm:exe "example"{
         "efkbgfx",
         "efkmat",
         "copy_bgfx",
-    },
-    bindir = {
-        lm.workdir .. ("/bin/%s/%s"):format(Plat, lm.mode),
     },
     includes = {
         alloca_file_includes[Plat]:string(),

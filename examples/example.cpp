@@ -87,8 +87,10 @@ public:
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
-		m_efkEffectHandle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+		for (int ii=0; ii<4; ++ii){
+			auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
+			m_efkManager->Play(eff, ii*5.f, 0, 0);
+		}
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -104,7 +106,6 @@ public:
 
 	virtual int shutdown() override
 	{
-		m_efkEffect = nullptr;
 		m_efkManager = nullptr;
 		m_efkRenderer = nullptr;
 		// Shutdown bgfx.
@@ -255,7 +256,7 @@ private:
 			bgfx::UniformInfo info;
 			const bgfx::UniformHandle h = uniforms[ii];
 			bgfx::getUniformInfo(h, info);
-			if (info.name == "s_scene"){
+			if (strcmp(info.name, "s_scene") == 0){
 				m_fullscreenTextureUniformHandle = h;
 				break;
 			}
@@ -424,8 +425,6 @@ private:
 private:
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
 	Effekseer::ManagerRef m_efkManager = nullptr;
-	Effekseer::EffectRef m_efkEffect = nullptr;
-	Effekseer::Handle m_efkEffectHandle = 0;
 	Effekseer::Matrix44	m_projMat;
 	Effekseer::Matrix44	m_viewMat;
 
@@ -434,13 +433,13 @@ private:
 	bgfx::FrameBufferHandle m_frameBuffer = BGFX_INVALID_HANDLE;
 
 	bgfx::VertexLayout m_cubeLayout;
-	bgfx::VertexBufferHandle m_cubeVertexBuffer;
-	bgfx::IndexBufferHandle m_cubeIndexBuffer;
+	bgfx::VertexBufferHandle m_cubeVertexBuffer = BGFX_INVALID_HANDLE;
+	bgfx::IndexBufferHandle m_cubeIndexBuffer = BGFX_INVALID_HANDLE;
 
-	bgfx::ProgramHandle m_fullscreenProg;
-	bgfx::ProgramHandle m_cubeProg;
+	bgfx::ProgramHandle m_fullscreenProg = BGFX_INVALID_HANDLE;
+	bgfx::ProgramHandle m_cubeProg = BGFX_INVALID_HANDLE;
 
-	bgfx::UniformHandle m_fullscreenTextureUniformHandle;
+	bgfx::UniformHandle m_fullscreenTextureUniformHandle = BGFX_INVALID_HANDLE;
 
 	const uint64_t m_renderstate = 0
 		| BGFX_STATE_WRITE_R

@@ -113,7 +113,9 @@ local function build_eff_shader(input, scfile, output, defines, stagetype, shade
 
     local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     --print(table.concat(cmd, " "))
-
+    cmd.deps = {
+        "efkmat",
+    }
     lm:build(cmd)
 end
 
@@ -130,24 +132,18 @@ for modeltype, shaders in pairs(shaderfiles) do
             local input = vulkan_shader_dir / filename
             local scfile = shader_output_dir / fs.path(filename):replace_extension "sc"
             local output = fs.path(scfile):replace_extension "bin"
-            shader_target_files.inputs[#shader_target_files.inputs+1] = input
-            shader_target_files.scfiles[#shader_target_files.scfiles+1] = scfile
-            shader_target_files.outputs[#shader_target_files.outputs+1] = output
+            shader_target_files.inputs[#shader_target_files.inputs+1] = input:string()
+            shader_target_files.scfiles[#shader_target_files.scfiles+1] = scfile:string()
+            shader_target_files.outputs[#shader_target_files.outputs+1] = output:string()
             build_eff_shader(input, scfile, output, shader.defines, stage, st, modeltype)
         end
     end
 end
 
 lm:phony "efxbgfx_shaders" {
-    deps = {
-        "efkmat"
-    },
     input = shader_target_files.scfiles,
 }
 
 lm:phony "efkbgfx_shader_binaries" {
-    deps = {
-        "efxbgfx_shaders",
-    },
     input = shader_target_files.outputs,
 }
