@@ -113,7 +113,9 @@ local function build_eff_shader(input, scfile, output, defines, stagetype, shade
 
     local cmd = sc.gen_cmd(Shaderc:string(), cfg)
     --print(table.concat(cmd, " "))
-
+    cmd.deps = {
+        "efkmat",
+    }
     lm:build(cmd)
 end
 
@@ -139,15 +141,9 @@ for modeltype, shaders in pairs(shaderfiles) do
 end
 
 lm:phony "efxbgfx_shaders" {
-    deps = {
-        "efkmat"
-    },
     input = shader_target_files.scfiles,
 }
 
 lm:phony "efkbgfx_shader_binaries" {
-    deps = {
-        "efxbgfx_shaders",
-    },
     input = shader_target_files.outputs,
 }
