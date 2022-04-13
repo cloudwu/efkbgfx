@@ -78,7 +78,7 @@ function ShaderInfoFromFilename(filename)
     end
 
     if modeltype == nil or shadertype == nil or stage == nil then
-        error(("invalid filename, 'modeltype should be 'sprite'|'model', shadertype should be 'unlit|lit|distortion', 'stage' shoulde be 'vs|ps', filename is :%s"):format(fn:string()))
+        error(("invalid filename, 'modeltype should be 'sprite'|'model', shadertype should be 'unlit|lit|distortion', 'stage' shoulde be 'vs|ps', filename is :%s"):format(filename))
     end
 
     if ad then
