@@ -52,3 +52,43 @@ EfkLib_Includes = ToStrings{
     BgfxDir / "include",
     BxDir / "include",
 }
+
+local stage_mapper<const> = {
+    vs = "vs",
+    ps = "fs",
+}
+
+local shadertype_mapper<const> = {
+    unlit       = "Unlit",
+    lit         = "Lit",
+    distortion  = "BackDistortion",
+    ad_unlit    = "AdvancedUnlit",
+    ad_lit      = "AdvancedLit",
+    ad_distortion="AdvancedBackDistortion",
+}
+
+function ShaderInfoFromFilename(filename)
+    local fmt = "(%w+)_(%w+)_(%w+)%.fx"
+    local adfmt = "ad_" .. fmt
+    local modeltype, shadertype, stage = filename:match(adfmt)
+    local ad = true
+    if modeltype == nil then
+        ad = nil
+        modeltype, shadertype, stage = filename:match(fmt)
+    end
+
+    if modeltype == nil or shadertype == nil or stage == nil then
+        error(("invalid filename, 'modeltype should be 'sprite'|'model', shadertype should be 'unlit|lit|distortion', 'stage' shoulde be 'vs|ps', filename is :%s"):format(fn:string()))
+    end
+
+    if ad then
+        shadertype = "ad_" .. shadertype
+    end
+
+    return {
+        modeltype   = modeltype,
+        shadertype  = shadertype_mapper[shadertype],
+        stage       = assert(stage_mapper[stage]),
+        filename    = filename,
+    }
+end
