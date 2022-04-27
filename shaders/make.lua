@@ -36,7 +36,7 @@ local function get_shaders_info(src_shaderpath)
     for fn in fs.pairs(src_shaderpath) do
         local ext = fn:extension():string():lower()
         if ext == ".vert" or ext == ".frag" then
-            ss[#ss+1] = ShaderInfoFromFilename(fn:string())
+            ss[#ss+1] = ShaderInfoFromFilename(fn:filename():string())
         end
     end
 
