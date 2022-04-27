@@ -11,6 +11,7 @@
 
 #include <common.h>
 #include <bgfx_utils.h>
+#include <entry/input.h>
 #include <bgfx/c99/bgfx.h>
 
 #include "renderer/bgfxrenderer.h"
@@ -87,10 +88,14 @@ public:
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
-		for (int ii=0; ii<4; ++ii){
-			auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
-			m_efkManager->Play(eff, ii*5.f, 0, 0);
-		}
+
+		// for (int ii=0; ii<4; ++ii){
+		// 	auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
+		// 	m_efkManager->Play(eff, ii*5.f, 0, 0);
+		// }
+
+		auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		m_efkHandle = m_efkManager->Play(eff, 5.f, 0.f, 0.f);
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -118,6 +123,23 @@ public:
 	{
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
+			if (inputGetKeyState(entry::Key::Up))
+			{
+				m_efkManager->SetRotation(m_efkHandle, 0.0, 0.0, bx::kPi * 0.1f);
+			}
+			else if (inputGetKeyState(entry::Key::Down))
+			{
+				m_efkManager->SetRotation(m_efkHandle, 0.0, 0.0, -bx::kPi * 0.1f);
+			}
+			else if (inputGetKeyState(entry::Key::Left))
+			{
+				m_efkManager->AddLocation(m_efkHandle, Effekseer::Vector3D(-0.2f, 0.0f, 0.0f));
+			}
+			else if (inputGetKeyState(entry::Key::Right))
+			{
+				m_efkManager->AddLocation(m_efkHandle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
+			}
+			
 			// Set view 0 default viewport.
 			bgfx::setViewRect(g_defaultViewId, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 			m_efkManager->Update();
@@ -440,6 +462,8 @@ private:
 	bgfx::ProgramHandle m_cubeProg = BGFX_INVALID_HANDLE;
 
 	bgfx::UniformHandle m_fullscreenTextureUniformHandle = BGFX_INVALID_HANDLE;
+
+	Effekseer::Handle	m_efkHandle = 0;
 
 	const uint64_t m_renderstate = 0
 		| BGFX_STATE_WRITE_R

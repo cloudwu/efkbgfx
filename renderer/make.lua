@@ -43,16 +43,17 @@ local function create_source_efkbgfx(defines)
         }
     }
 end
-lm:source_set "source_efkbgfx_lib" (create_source_efkbgfx())
+
+lm:source_set "source_efkbgfx_lib" (
+    create_source_efkbgfx()
+)
+
 lm:source_set "source_efkbgfx" (
     create_source_efkbgfx{
         "EFXBGFX_DYNAMIC_LIB=1",
         "EFXBGFX_EXPORTS=1",
-    })
-
-lm:lib "efkbgfx_lib" {
-    deps = {"source_efkbgfx_lib"}
-}
+    }
+)
 
 lm:dll "efkbgfx" {
     deps = {"source_efkbgfx"},

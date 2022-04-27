@@ -14,12 +14,11 @@ lm:source_set "source_effekseer_callback" {
     sources = {
         "efkcallback.c",
     },
-    deps = {
-        "efkbgfx_lib",
-        "efkbgfx_shader_binaries",
-    }
 }
 
 lm:lua_dll "effekseer_callback" {
-    deps = {"source_effekseer_callback"}
+    deps = {
+        "source_efkbgfx_lib",
+        "source_effekseer_callback",
+    }
 }
