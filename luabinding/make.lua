@@ -1,7 +1,6 @@
 local lm = require "luamake"
 
 lm:import "../renderer/make.lua"
-lm:import "../shaders/make.lua"
 
 if lm.LuaInclude == nil then
     error "need to define lua directory"
