@@ -21,7 +21,7 @@ end
 
 local function cvt2bgfxshader(input, output, shadertype, stage, modeltype)
     lm:build {
-        "$luamake", "lua", "@../efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype, "@../efkmatc",
+        "$luamake", "lua", "@../efkmatc/genbgfxshader.lua", "$in", "$out", shadertype, stage, modeltype, "@../efkmatc", lm.os,
         deps = "efkmat",
         description = "Compile sc: $out",
         input = input:string(),
