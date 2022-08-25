@@ -523,7 +523,7 @@ public:
 			}
 		}
 		bool Initialize(struct InitArgs *init) {
-			const uint32_t depthSlot[(int)EffekseerRenderer::RendererShaderType::Material] = {1, 2, 2, 6, 7, 7,};
+//			const uint32_t depthSlot[(int)EffekseerRenderer::RendererShaderType::Material] = {1, 2, 2, 6, 7, 7,};
 			for (auto t : {
 				EffekseerRenderer::RendererShaderType::Unlit,
 				EffekseerRenderer::RendererShaderType::Lit,
@@ -910,7 +910,7 @@ private:
 			Shader * s = new Shader(this);
 			int id = (int)t;
 			m_shaders[id] = s;
-			uint32_t depthTexSlot = 1;
+//			uint32_t depthTexSlot = 1;
 			const char *shadername = NULL;
 			switch (t) {
 			case EffekseerRenderer::RendererShaderType::Unlit :
@@ -1465,14 +1465,12 @@ void RenderState::Update(bool forced) {
 		state |= BGFX_STATE_BLEND_EQUATION_SEPARATE(BGFX_STATE_BLEND_EQUATION_REVSUB, BGFX_STATE_BLEND_EQUATION_ADD);
 		state |= BGFX_STATE_BLEND_FUNC_SEPARATE(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_ZERO, BGFX_STATE_BLEND_ONE);
 	} else {
+		state |= BGFX_STATE_BLEND_EQUATION_SEPARATE(BGFX_STATE_BLEND_EQUATION_ADD, BGFX_STATE_BLEND_EQUATION_ADD);
 		if (m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Blend) {
-			state |= BGFX_STATE_BLEND_EQUATION_SEPARATE(BGFX_STATE_BLEND_EQUATION_ADD, BGFX_STATE_BLEND_EQUATION_MAX);
 			state |= BGFX_STATE_BLEND_FUNC_SEPARATE(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA, BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_ONE);
 		} else if (m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Add) {
-			state |= BGFX_STATE_BLEND_EQUATION_SEPARATE(BGFX_STATE_BLEND_EQUATION_ADD, BGFX_STATE_BLEND_EQUATION_MAX);
 			state |= BGFX_STATE_BLEND_FUNC_SEPARATE(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_ONE);
 		} else if (m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Mul) {
-			state |= BGFX_STATE_BLEND_EQUATION_SEPARATE(BGFX_STATE_BLEND_EQUATION_ADD, BGFX_STATE_BLEND_EQUATION_ADD);
 			state |= BGFX_STATE_BLEND_FUNC_SEPARATE(BGFX_STATE_BLEND_ZERO, BGFX_STATE_BLEND_SRC_COLOR, BGFX_STATE_BLEND_ZERO, BGFX_STATE_BLEND_ONE);
 		}
 	}
