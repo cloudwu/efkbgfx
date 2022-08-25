@@ -11,6 +11,7 @@
 
 #include <common.h>
 #include <bgfx_utils.h>
+#include <entry/input.h>
 #include <bgfx/c99/bgfx.h>
 
 #include "renderer/bgfxrenderer.h"
@@ -87,8 +88,14 @@ public:
 
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
 		//m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/Laser01.efk");
-		m_efkEffect = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
-		m_efkEffectHandle = m_efkManager->Play(m_efkEffect, 0, 0, 0);
+
+		// for (int ii=0; ii<4; ++ii){
+		// 	auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/sword_lightning.efkefc");
+		// 	m_efkManager->Play(eff, ii*5.f, 0, 0);
+		// }
+
+		auto eff = Effekseer::Effect::Create(m_efkManager, u"./resources/Simple_Model_UV.efkefc");
+		m_efkHandle = m_efkManager->Play(eff, 5.f, 0.f, 0.f);
 
 		// Enable debug text.
 		bgfx::setDebug(m_debug);
@@ -104,7 +111,6 @@ public:
 
 	virtual int shutdown() override
 	{
-		m_efkEffect = nullptr;
 		m_efkManager = nullptr;
 		m_efkRenderer = nullptr;
 		// Shutdown bgfx.
@@ -117,6 +123,23 @@ public:
 	{
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
+			if (inputGetKeyState(entry::Key::Up))
+			{
+				m_efkManager->SetRotation(m_efkHandle, 0.0, 0.0, bx::kPi * 0.1f);
+			}
+			else if (inputGetKeyState(entry::Key::Down))
+			{
+				m_efkManager->SetRotation(m_efkHandle, 0.0, 0.0, -bx::kPi * 0.1f);
+			}
+			else if (inputGetKeyState(entry::Key::Left))
+			{
+				m_efkManager->AddLocation(m_efkHandle, Effekseer::Vector3D(-0.2f, 0.0f, 0.0f));
+			}
+			else if (inputGetKeyState(entry::Key::Right))
+			{
+				m_efkManager->AddLocation(m_efkHandle, Effekseer::Vector3D(0.2f, 0.0f, 0.0f));
+			}
+			
 			// Set view 0 default viewport.
 			bgfx::setViewRect(g_defaultViewId, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 			m_efkManager->Update();
@@ -255,7 +278,7 @@ private:
 			bgfx::UniformInfo info;
 			const bgfx::UniformHandle h = uniforms[ii];
 			bgfx::getUniformInfo(h, info);
-			if (info.name == "s_scene"){
+			if (strcmp(info.name, "s_scene") == 0){
 				m_fullscreenTextureUniformHandle = h;
 				break;
 			}
@@ -369,7 +392,7 @@ private:
 			, (uint16_t)dstimage->m_height
 			, false
 			, 1
-			, bgfx::TextureFormat::BGRA8
+			, bgfx::TextureFormat::RGBA8
 			, state
 			, bgfx::copy(dstimage->m_data, dstimage->m_size)
 			);
@@ -398,7 +421,7 @@ private:
 			p->ProjectionMatrix33 = that->m_projMat.Values[2][2];
 			p->ProjectionMatrix34 = that->m_projMat.Values[2][3];
 			p->ProjectionMatrix43 = that->m_projMat.Values[3][2];
-			p->ProjectionMatrix44 = that->m_projMat.Values[4][4];
+			p->ProjectionMatrix44 = that->m_projMat.Values[3][3];
 			return {that->m_sceneDepth.idx};
 		}
 		assert(false && "invalid texture type");
@@ -415,17 +438,15 @@ private:
 	}
 
 	static void TextureUnload(int id, void *ud){
-		bgfx::destroy(bgfx::TextureHandle{id & 0xffff});
+		bgfx::destroy(bgfx::TextureHandle{uint16_t(id & 0xffff)});
 	}
 	static bgfx_texture_handle_t TextureHandle(int id, void *ud) {
-		bgfx_texture_handle_t ret { id & 0xffff };
+		bgfx_texture_handle_t ret { uint16_t(id & 0xffff) };
 		return ret;
 	}
 private:
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
 	Effekseer::ManagerRef m_efkManager = nullptr;
-	Effekseer::EffectRef m_efkEffect = nullptr;
-	Effekseer::Handle m_efkEffectHandle = 0;
 	Effekseer::Matrix44	m_projMat;
 	Effekseer::Matrix44	m_viewMat;
 
@@ -434,13 +455,15 @@ private:
 	bgfx::FrameBufferHandle m_frameBuffer = BGFX_INVALID_HANDLE;
 
 	bgfx::VertexLayout m_cubeLayout;
-	bgfx::VertexBufferHandle m_cubeVertexBuffer;
-	bgfx::IndexBufferHandle m_cubeIndexBuffer;
+	bgfx::VertexBufferHandle m_cubeVertexBuffer = BGFX_INVALID_HANDLE;
+	bgfx::IndexBufferHandle m_cubeIndexBuffer = BGFX_INVALID_HANDLE;
 
-	bgfx::ProgramHandle m_fullscreenProg;
-	bgfx::ProgramHandle m_cubeProg;
+	bgfx::ProgramHandle m_fullscreenProg = BGFX_INVALID_HANDLE;
+	bgfx::ProgramHandle m_cubeProg = BGFX_INVALID_HANDLE;
 
-	bgfx::UniformHandle m_fullscreenTextureUniformHandle;
+	bgfx::UniformHandle m_fullscreenTextureUniformHandle = BGFX_INVALID_HANDLE;
+
+	Effekseer::Handle	m_efkHandle = 0;
 
 	const uint64_t m_renderstate = 0
 		| BGFX_STATE_WRITE_R

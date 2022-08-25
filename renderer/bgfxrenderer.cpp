@@ -671,6 +671,7 @@ private:
 	int m_current_layout = 0;
 	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
+	bgfx_encoder_t *m_encoder = nullptr;
 
 	const Effekseer::Backend::TextureRef & GetExternalTexture(Effekseer::Backend::TextureRef &t, int type, void *param) const {
 		if (t == nullptr)
@@ -836,7 +837,8 @@ private:
 			PUNIFORM(u_fsfFalloffBeginColor,	FalloffParam.BeginColor)
 			PUNIFORM(u_fsfFalloffEndColor,  	FalloffParam.EndColor)
 			PUNIFORM(u_fsfEmissiveScaling, 		EmmisiveParam)
-			PUNIFORM(u_fsfEdgeParameter, 		EdgeParam)
+			PUNIFORM(u_fsfEdgeColor,			EdgeParam.EdgeColor)
+			PUNIFORM(u_fsfEdgeParameter, 		EdgeParam.Buffer)
 			PUNIFORM(u_fssoftParticleParam, 	SoftParticleParam.softParticleParams)
 			PUNIFORM(u_fsreconstructionParam1, 	SoftParticleParam.reconstructionParam1)
 			PUNIFORM(u_fsreconstructionParam2, 	SoftParticleParam.reconstructionParam2)
@@ -1011,6 +1013,7 @@ public:
 		m_restorationOfStates = flag;
 	}
 	bool BeginRendering() override {
+		m_encoder = BGFX(encoder_begin)(false);
 		GetImpl()->CalculateCameraProjectionMatrix();
 
 		m_renderState->GetActiveState().Reset();
@@ -1030,6 +1033,7 @@ public:
 	}
 	bool EndRendering() override {
 		m_standardRenderer->ResetAndRenderingIfRequired();
+		BGFX(encoder_end)(m_encoder);
 		return true;
 	}
 	DummyVertexBuffer* GetVertexBuffer() {
@@ -1097,13 +1101,13 @@ public:
 	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
 		(void)stride;
 		//m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
-		BGFX(set_vertex_buffer)(0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
+		BGFX(encoder_set_vertex_buffer)(m_encoder, 0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		assert(indexBuffer == m_indexBuffer);
 	}
 	void SetIndexBuffer(const Effekseer::Backend::IndexBufferRef& indexBuffer) {
-		BGFX(set_index_buffer)(indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface(), 0, UINT32_MAX);
+		BGFX(encoder_set_index_buffer)(m_encoder, indexBuffer.DownCast<StaticIndexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetLayout(Shader* shader) {}
 
@@ -1175,17 +1179,17 @@ public:
 		const int offset = layout.offset;
 		const int count = layout.count - offset;
 
-		BGFX(set_transient_vertex_buffer)(0, &layout.tvb, offset, count);
+		BGFX(encoder_set_transient_vertex_buffer)(m_encoder, 0, &layout.tvb, offset, count);
 		const uint32_t indexCount = count / 4 * 6;
-		BGFX(set_index_buffer)(m_indexBuffer->GetInterface(), 0, indexCount);
-		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
+		BGFX(encoder_set_index_buffer)(m_encoder, m_indexBuffer->GetInterface(), 0, indexCount);
+		BGFX(encoder_submit)(m_encoder, m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	void DrawPolygon(int32_t vertexCount, int32_t indexCount) {
 		// todo:
 	}
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
-		BGFX(set_instance_count)(instanceCount);
-		BGFX(submit)(m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
+		BGFX(encoder_set_instance_count)(m_encoder, instanceCount);
+		BGFX(encoder_submit)(m_encoder, m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
 	}
 	Shader* GetShader(EffekseerRenderer::RendererShaderType type) const {
 		int n = (int)type;
@@ -1231,7 +1235,7 @@ public:
 				} else {
 					handle = m_initArgs.texture_handle(tex_id, m_initArgs.ud);
 				}
-				BGFX(set_texture)(ii, sampler, handle, flags);
+				BGFX(encoder_set_texture)(m_encoder, ii, sampler, handle, flags);
 			}
 		}
 	}
@@ -1240,7 +1244,7 @@ public:
 		m_renderState->Update(true);
 	}
 	void SetCurrentState(uint64_t state) {
-		BGFX(set_state)(state, 0);
+		BGFX(encoder_set_state)(m_encoder, state, 0);
 	}
 	Effekseer::Backend::GraphicsDeviceRef GetGraphicsDevice() const override {
 		return m_device;
@@ -1257,6 +1261,10 @@ public:
 	}
 	// Shader API
 	bool InitShader(Shader *s, bgfx_shader_handle_t vs, bgfx_shader_handle_t fs) const {
+		if (!(BGFX_HANDLE_IS_VALID(vs) && BGFX_HANDLE_IS_VALID(fs))){
+			s->m_render = nullptr;
+			return false;
+		}
 		s->m_program = BGFX(create_program)(vs, fs, false);
 		if (s->m_program.idx == UINT16_MAX) {
 			s->m_render = nullptr;
@@ -1293,7 +1301,7 @@ public:
 		int i;
 		for (i=0;i<s->m_vsSize + s->m_fsSize;i++) {
 			if (s->m_uniform[i].ptr != nullptr) {
-				BGFX(set_uniform)(s->m_uniform[i].handle, s->m_uniform[i].ptr, s->m_uniform[i].count);
+				BGFX(encoder_set_uniform)(m_encoder, s->m_uniform[i].handle, s->m_uniform[i].ptr, s->m_uniform[i].count);
 			}
 		}
 	}
