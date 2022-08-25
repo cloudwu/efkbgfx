@@ -4,11 +4,27 @@ local shadertype 	= arg[3]
 local stage 		= arg[4]
 local modeltype 	= arg[5]
 local cpath			= arg[6]
+local plat			= arg[7]
 
+plat = plat:lower()
+local plat_suffix = {
+	macos = ".so",
+	windows = ".dll",
+	ios = ".so",
+}
+
+local suffix = plat_suffix[plat]
+if suffix == nil then
+	error(("not support platform:"):format(plat or ""))
+end
+
+local function topath(p)
+	return p .. "/?" .. suffix
+end
 package.cpath = table.concat({
-	cpath .. "/?.dll",
-	"./?.dll",
-	"efkmatc/?.dll",
+	topath(cpath),
+	topath ".",
+	topath "efkmatc",
 }, ";")
 
 local efkmat = require "efkmat"

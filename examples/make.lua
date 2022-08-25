@@ -60,7 +60,7 @@ for fn in fs.pairs(shader_folder) do
     if not fn:string():match "varying.def.sc" then
         local ext = fn:extension():string():lower()
         if ext == ".sc" then
-            local si = ShaderInfoFromFilename(fn:string())
+            local si = ShaderInfoFromFilename(fn:filename():string())
             scfiles[#scfiles+1] = {
                 input = shader_folder / si.filename,
                 stage = si.stage,
