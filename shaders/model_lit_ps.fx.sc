@@ -140,10 +140,10 @@ void main()
 {
     PS_Input Input;
     Input.PosVS = gl_FragCoord;
-    #ifdef LINEAR_INPUT_COLOR
-	Input.Color = SRGBToLinear(v_Color);
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = SRGBToLinear(v_Color);
 #else
-	Input.Color = v_Color;
+    Input.Color = v_Color;
 #endif //LINEAR_INPUT_COLOR
 
     Input.UV = v_UV;

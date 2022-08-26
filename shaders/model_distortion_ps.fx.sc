@@ -83,10 +83,10 @@ void main()
     Input.ProjBinormal = v_ProjBinormal;
     Input.ProjTangent = v_ProjTangent;
     Input.PosP = v_PosP;
-    #ifdef LINEAR_INPUT_COLOR
-	Input.Color = SRGBToLinear(v_Color);
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = SRGBToLinear(v_Color);
 #else
-	Input.Color = v_Color;
+    Input.Color = v_Color;
 #endif //LINEAR_INPUT_COLOR
 
     vec4 _310 = _main(Input);

@@ -294,7 +294,12 @@ void main()
 {
     PS_Input Input;
     Input.PosVS = gl_FragCoord;
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = SRGBToLinear(v_Color);
+#else
     Input.Color = v_Color;
+#endif //LINEAR_INPUT_COLOR
+
     Input.UV_Others = v_UV_Others;
     Input.WorldN = v_WorldN;
     Input.Alpha_Dist_UV = v_Alpha_Dist_UV;
