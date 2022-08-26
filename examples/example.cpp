@@ -52,7 +52,7 @@ public:
 		bgfx::setViewMode(g_defaultViewId, bgfx::ViewMode::Sequential);
 
 		auto inter = bgfx_get_interface(BGFX_API_VERSION);
-
+		const bool invz = false;
 		EffekseerRendererBGFX::InitArgs efkArgs {
 			2048, g_defaultViewId, inter,
 			EffekseerBgfxTest::ShaderLoad,
@@ -61,6 +61,7 @@ public:
 			EffekseerBgfxTest::TextureUnload,
 			EffekseerBgfxTest::TextureHandle,
 			this,
+			invz,
 		};
 
 		initFullScreen();

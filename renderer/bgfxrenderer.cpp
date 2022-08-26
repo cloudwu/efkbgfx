@@ -111,8 +111,9 @@ public:
 class RenderState : public EffekseerRenderer::RenderStateBase {
 private:
 	RendererImplemented* m_renderer;
+	bool m_invz;
 public:
-	RenderState(RendererImplemented* renderer) : m_renderer(renderer) {}
+	RenderState(RendererImplemented* renderer, bool invz) : m_renderer(renderer), m_invz(false) {}
 	virtual ~RenderState() override = default;
 	void Update(bool forced);
 };
@@ -1001,7 +1002,7 @@ public:
 		}
 		InitIndexBuffer();
 		InitVertexBuffer();
-		m_renderState = new RenderState(this);
+		m_renderState = new RenderState(this, init->invz);
 		
 		m_standardRenderer = new BGFXStandardRenderer(this);
 
@@ -1448,7 +1449,7 @@ void RenderState::Update(bool forced) {
 		| BGFX_STATE_MSAA;
 
 	if (m_next.DepthTest) {
-		state |= BGFX_STATE_DEPTH_TEST_LEQUAL;
+		state |= m_invz ? BGFX_STATE_DEPTH_TEST_GEQUAL : BGFX_STATE_DEPTH_TEST_LEQUAL;
 	} else {
 		state |= BGFX_STATE_DEPTH_TEST_ALWAYS;
 	}
