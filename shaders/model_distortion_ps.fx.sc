@@ -84,7 +84,7 @@ void main()
     Input.ProjTangent = v_ProjTangent;
     Input.PosP = v_PosP;
 #ifdef LINEAR_INPUT_COLOR
-    Input.Color = SRGBToLinear(v_Color);
+    Input.Color = to_linear(v_Color);
 #else
     Input.Color = v_Color;
 #endif //LINEAR_INPUT_COLOR

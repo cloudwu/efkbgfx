@@ -13,6 +13,16 @@ vec4 vec4_splat(vec4 v)
     return v;
 }
 
+vec3 to_linear(vec3 _rgb)
+{
+	return pow(abs(_rgb), vec3_splat(2.2) );
+}
+
+vec4 to_linear(vec4 _rgba)
+{
+	return vec4(to_linear(_rgba.xyz), _rgba.w);
+}
+
 #if !BGFX_SHADER_LANGUAGE_SPIRV
 #define gl_InstanceIndex gl_InstanceID
 #endif //BGFX_SHADER_LANGUAGE_SPIRV
