@@ -131,7 +131,12 @@ void main()
 {
     PS_Input Input;
     Input.PosVS = gl_FragCoord;
-    Input.Color = v_Color;
+    #ifdef LINEAR_INPUT_COLOR
+	Input.Color = SRGBToLinear(v_Color);
+#else
+	Input.Color = v_Color;
+#endif //LINEAR_INPUT_COLOR
+
     Input.UV = v_UV;
     Input.PosP = v_PosP;
     vec4 _359 = _main(Input);

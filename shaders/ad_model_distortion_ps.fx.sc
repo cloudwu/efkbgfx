@@ -237,7 +237,13 @@ void main()
     Input.ProjBinormal = v_ProjBinormal;
     Input.ProjTangent = v_ProjTangent;
     Input.PosP = v_PosP;
+
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = SRGBToLinear(v_Color);
+#else
     Input.Color = v_Color;
+#endif //LINEAR_INPUT_COLOR
+
     Input.Alpha_Dist_UV = v_Alpha_Dist_UV;
     Input.Blend_Alpha_Dist_UV = v_Blend_Alpha_Dist_UV;
     Input.Blend_FBNextIndex_UV = v_Blend_FBNextIndex_UV;
