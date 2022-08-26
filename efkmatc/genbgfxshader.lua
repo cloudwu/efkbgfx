@@ -290,9 +290,11 @@ local function genshader(fullname, stagetype, type, modeltype)
 	local func = s.func
 	local main = func.main.imp:gsub("[%w_]+", varying.map)
 	if stage == "fs" then
-		main = main:gsub("Input%.Color%s*=%s*([%w_]+)%s*;", [[
+		main = main:gsub("([ %t]*)Input%.Color%s*=%s*([%w_]+)%s*;", [[
 #ifdef LINEAR_INPUT_COLOR
-	Input.Color = SRGBToLinear(%1);
+%1Input.Color = SRGBToLinear(%2);
+#else
+%1Input.Color = %2;
 #endif //LINEAR_INPUT_COLOR
 ]]
 )
