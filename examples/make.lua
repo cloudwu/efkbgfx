@@ -83,7 +83,10 @@ for _, f in ipairs(scfiles) do
             cwd / BgfxDir / "src",
             cwd / bgfx_example_dir / "common",
         },
-        defines = {},
+        defines = {
+            --NOTICE: only sRGB texture and framebuffer mode should add this macro
+            --LINEAR_INPUT_COLOR=1,
+        },
         input = input:string(),
         output = output:string(),
     }

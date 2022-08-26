@@ -38,6 +38,7 @@ namespace EffekseerRendererBGFX {
 		void (*texture_unload)(int id, void *ud);
 		bgfx_texture_handle_t (*texture_handle)(int id, void *ud);	// translate id to handle
 		void * ud;
+		bool invz;
 	};
 
 	EFXBGFX_API EffekseerRenderer::RendererRef CreateRenderer(struct InitArgs *init);
