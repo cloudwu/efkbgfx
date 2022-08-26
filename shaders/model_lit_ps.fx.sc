@@ -140,7 +140,12 @@ void main()
 {
     PS_Input Input;
     Input.PosVS = gl_FragCoord;
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = to_linear(v_Color);
+#else
     Input.Color = v_Color;
+#endif //LINEAR_INPUT_COLOR
+
     Input.UV = v_UV;
     Input.WorldN = v_WorldN;
     Input.WorldB = v_WorldB;

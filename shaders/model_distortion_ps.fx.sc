@@ -83,7 +83,12 @@ void main()
     Input.ProjBinormal = v_ProjBinormal;
     Input.ProjTangent = v_ProjTangent;
     Input.PosP = v_PosP;
+#ifdef LINEAR_INPUT_COLOR
+    Input.Color = to_linear(v_Color);
+#else
     Input.Color = v_Color;
+#endif //LINEAR_INPUT_COLOR
+
     vec4 _310 = _main(Input);
     gl_FragColor = _310;
 }
