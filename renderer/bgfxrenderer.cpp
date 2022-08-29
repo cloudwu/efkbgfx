@@ -113,7 +113,7 @@ private:
 	RendererImplemented* m_renderer;
 	bool m_invz;
 public:
-	RenderState(RendererImplemented* renderer, bool invz) : m_renderer(renderer), m_invz(false) {}
+	RenderState(RendererImplemented* renderer, bool invz) : m_renderer(renderer), m_invz(invz) {}
 	virtual ~RenderState() override = default;
 	void Update(bool forced);
 };
