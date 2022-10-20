@@ -2,14 +2,7 @@ local lm = require "luamake"
 
 lm:import "../renderer/make.lua"
 
-if lm.LuaInclude == nil then
-    error "need to define lua directory"
-end
-
-lm:source_set "source_effekseer_callback" {
-    includes = {
-        lm.LuaInclude
-    },
+lm:lua_source "source_effekseer_callback" {
     sources = {
         "efkcallback.c",
     },
