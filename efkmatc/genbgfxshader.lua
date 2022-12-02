@@ -74,8 +74,21 @@ local function gen(filename)
 	for layout in source:gmatch "\n(layout[^\n]+;)" do
 		table.insert(valid_lines, layout)
 		local attrib, type, name = layout:match "layout(%b())%s+(.+)%s+([%w_]+);$"
-		local id = tonumber(attrib:match "location%s*=%s*(%d+)")
-		if id then
+		if type == "uniform sampler2D" then
+			local id = tonumber(attrib:match "binding%s*=%s*(%d+)")
+			if id == nil then
+				error(("Invalid layout:%s"):format(layout))
+			end
+			assert(type == "uniform sampler2D")
+			table.insert(shader.texture, {
+				binding = id,
+				name = name,
+			})
+		else
+			local id = tonumber(attrib:match "location%s*=%s*(%d+)")
+			if id == nil then
+				error(("Invalid layout:%s"):format(layout))
+			end
 			local inout, t = type:match "(in) (%w+)"
 			if inout == nil then
 				inout, t = type:match "(out) (%w+)"
@@ -85,16 +98,6 @@ local function gen(filename)
 				inout = inout,
 				type = t,
 				id = id,
-			})
-		else
-			id = tonumber(attrib:match "binding%s*=%s*(%d+)")
-			if id == nil then
-				error("Invalid layout", layout)
-			end
-			assert(type == "uniform sampler2D")
-			table.insert(shader.texture, {
-				binding = id,
-				name = name,
 			})
 		end
 	end
