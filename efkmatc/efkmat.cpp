@@ -179,17 +179,16 @@ llayout(lua_State *L) {
 	return push_layouts(L, elements);
 }
 
-static Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement> g_model_layouts = {
-	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Pos", 	 "POSITION",0},
-	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Normal",  "NORMAL", 	0},
-	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Binormal","NORMAL", 	1},
-	{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Tangent", "NORMAL", 	2},
-	{Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT, 		"Input_UV", 	"TEXCOORD", 0},
-	{Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM, 	"Input_Color",	"NORMAL", 	3},
-};
-
 static int
 lmodel_layout(lua_State *L){
+	static Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement> g_model_layouts = {
+		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Pos", 	 "POSITION",0},
+		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Normal",  "NORMAL", 	0},
+		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Binormal","NORMAL", 	1},
+		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Tangent", "NORMAL", 	2},
+		{Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT, 		"Input_UV", 	"TEXCOORD", 0},
+		{Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM, 	"Input_Color",	"NORMAL", 	3},
+	};
 	return push_layouts(L, g_model_layouts);
 }
 
