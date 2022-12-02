@@ -181,7 +181,7 @@ local function load_vs_varying(s, shadertype, modeltype)
 	local input, output = {}, {}
 	local input_names, output_names = {}, {}
 	local map = {}
-	local layout = modeltype == "model" and efkmat.model_layout() or efkmat.layout(ShaderType[shadertype])
+	local layout = modeltype == "model" and efkmat.model_layout or efkmat.layout(ShaderType[shadertype])
 	local mapper = modeltype == "model" and MODEL_SEMANTIC or SPRITE_SEMANTIC
 
 	for i, v in ipairs(s.layout) do
