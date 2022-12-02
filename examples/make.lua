@@ -25,13 +25,11 @@ local alloca_file_includes = {
     mingw = BxDir / "include/compat/mingw",
 }
 
-if not lm.StaticBgfxLib then
-    local bgfxdll_name  = lm.BgfxSharedDll or ("bgfx-shared-lib" .. BgfxNameSuffix .. ".dll")
-    lm:copy "copy_bgfx" {
-        input   = (BgfxBinDir / bgfxdll_name):string(),
-        output  = lm.bindir .. "/" .. bgfxdll_name,
-    }
-end
+local bgfxdll_name  = lm.BgfxSharedDll or ("bgfx-shared-lib" .. BgfxNameSuffix .. ".dll")
+lm:copy "copy_bgfx" {
+    input   = (BgfxBinDir / bgfxdll_name):string(),
+    output  = lm.bindir .. "/" .. bgfxdll_name,
+}
 
 lm:import "../renderer/make.lua"
 lm:import "../shaders/make.lua"
