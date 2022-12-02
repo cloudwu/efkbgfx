@@ -126,43 +126,48 @@ public:
 	}
 };
 
+static inline void
+push_layout(lua_State *L, Effekseer::Backend::VertexLayoutFormat format, const char* name, const char* semanticName, int32_t semanticIndex){
+	lua_newtable(L);
+	switch (format) {
+	case Effekseer::Backend::VertexLayoutFormat::R32_FLOAT :
+		lua_pushstring(L, "R32_FLOAT");
+		break;
+	case Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT :
+		lua_pushstring(L, "R32G32_FLOAT");
+		break;
+	case Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT :
+		lua_pushstring(L, "R32G32B32_FLOAT");
+		break;
+	case Effekseer::Backend::VertexLayoutFormat::R32G32B32A32_FLOAT :
+		lua_pushstring(L, "R32G32B32A32_FLOAT");
+		break;
+	case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM :
+		lua_pushstring(L, "R8G8B8A8_UNORM");
+		break;
+	case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UINT :
+		lua_pushstring(L, "R8G8B8A8_UINT");
+		break;
+	default:
+		luaL_error(L, "Invalid Format");
+	}
+	lua_setfield(L, -2, "Format");
+	lua_pushstring(L, name);
+	lua_setfield(L, -2, "Name");
+	lua_pushstring(L, semanticName);
+	lua_setfield(L, -2, "SemanticName");
+	lua_pushinteger(L, semanticIndex);
+	lua_setfield(L, -2, "SemanticIndex");
+}
+
+
 static int
 push_layouts(lua_State *L, const Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement>& elements){
 	size_t n = elements.size();
 	lua_createtable(L, (int)n, 0);
 	for (size_t i = 0; i < n; i++) {
-		lua_newtable(L);
-		const auto &e = elements[i];
-		switch (e.Format) {
-		case Effekseer::Backend::VertexLayoutFormat::R32_FLOAT :
-			lua_pushstring(L, "R32_FLOAT");
-			break;
-		case Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT :
-			lua_pushstring(L, "R32G32_FLOAT");
-			break;
-		case Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT :
-			lua_pushstring(L, "R32G32B32_FLOAT");
-			break;
-		case Effekseer::Backend::VertexLayoutFormat::R32G32B32A32_FLOAT :
-			lua_pushstring(L, "R32G32B32A32_FLOAT");
-			break;
-		case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM :
-			lua_pushstring(L, "R8G8B8A8_UNORM");
-			break;
-		case Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UINT :
-			lua_pushstring(L, "R8G8B8A8_UINT");
-			break;
-		default:
-			return luaL_error(L, "Invalid Format");
-		}
-		lua_setfield(L, -2, "Format");
-		lua_pushstring(L, e.Name.c_str());
-		lua_setfield(L, -2, "Name");
-		lua_pushstring(L, e.SemanticName.c_str());
-		lua_setfield(L, -2, "SemanticName");
-		lua_pushinteger(L, e.SemanticIndex);
-		lua_setfield(L, -2, "SemanticIndex");
-
+		const auto&e = elements[i];
+		push_layout(L, e.Format, e.Name.c_str(), e.SemanticName.c_str(), e.SemanticIndex);
 		lua_rawseti(L, -2, i+1);
 	}
 	return 1;
@@ -179,19 +184,6 @@ llayout(lua_State *L) {
 	return push_layouts(L, elements);
 }
 
-static int
-lmodel_layout(lua_State *L){
-	static Effekseer::CustomVector<Effekseer::Backend::VertexLayoutElement> g_model_layouts = {
-		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Pos", 	 "POSITION",0},
-		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Normal",  "NORMAL", 	0},
-		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Binormal","NORMAL", 	1},
-		{Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, 	"Input_Tangent", "NORMAL", 	2},
-		{Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT, 		"Input_UV", 	"TEXCOORD", 0},
-		{Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM, 	"Input_Color",	"NORMAL", 	3},
-	};
-	return push_layouts(L, g_model_layouts);
-}
-
 extern "C" {
 
 LUAMOD_API int
@@ -200,10 +192,20 @@ luaopen_efkmat(lua_State *L) {
 	luaL_Reg l[] = {
 		{ "load", lloadMat },
 		{ "layout", llayout },
-		{ "model_layout", lmodel_layout},
 		{ NULL, NULL },
 	};
 	luaL_newlib(L, l);
+
+	// model layout
+	lua_createtable(L, 6, 0);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, "Input_Pos", 	 "POSITION",0); lua_seti(L, -2, 1);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, "Input_Normal",  "NORMAL", 	0); lua_seti(L, -2, 2);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, "Input_Binormal","NORMAL", 	1); lua_seti(L, -2, 3);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R32G32B32_FLOAT, "Input_Tangent", "NORMAL", 	2); lua_seti(L, -2, 4);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R32G32_FLOAT, 	"Input_UV", 	"TEXCOORD", 0); lua_seti(L, -2, 5);
+	push_layout(L, Effekseer::Backend::VertexLayoutFormat::R8G8B8A8_UNORM, 	"Input_Color",	"NORMAL", 	3); lua_seti(L, -2, 6);
+
+	lua_setfield(L, -2, "model_layout");
 	return 1;
 }
 
