@@ -74,7 +74,7 @@ void main()
     Input.Tangent = a_tangent;
     Input.UV = a_texcoord0;
     Input.Color = a_color0;
-    Input.Index = uint(gl_InstanceIndex);
+    Input.Index = uint(gl_InstanceID);
     VS_Output flattenTemp = _main(Input);
     vec4 _position = flattenTemp.PosVS;
     gl_Position = _position;
