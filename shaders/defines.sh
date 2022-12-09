@@ -23,6 +23,6 @@ vec4 to_linear(vec4 _rgba)
 	return vec4(to_linear(_rgba.xyz), _rgba.w);
 }
 
-#if !BGFX_SHADER_LANGUAGE_SPIRV
+#if BGFX_SHADER_LANGUAGE_SPIRV
 #define gl_InstanceIndex gl_InstanceID
 #endif //BGFX_SHADER_LANGUAGE_SPIRV
