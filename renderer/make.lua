@@ -10,7 +10,7 @@ lm.bindir   = lm.bindir or ("bin/%s/%s"):format(Plat, lm.mode)
 lm:source_set "source_efklib" {
     includes = EfkLib_Includes,
     sources = ToStrings{
-        EfkSrc / "Effekseer/Effekseer/**.cpp",
+        EfkSrc / "Effekseer/Effekseer/**/*.cpp",
         EfkSrc / "EffekseerMaterial/*.cpp",
         EfkSrc / "EffekseerRendererCommon/*.cpp",
     },
