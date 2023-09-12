@@ -22,29 +22,23 @@ static struct handle_t invalid_handle = { 0xffff };
 
 #define TEXTURE_BACKGROUND 0
 #define TEXTURE_DEPTH 1
+#define TEXTURE_MAX 1024
 
 struct callback_ud {
 	lua_State *L;
 	int (*texture_transform)(int id);
 	int error_handler;
+	int texture_n;
 	struct handle_t background;
 	struct handle_t depth;
 	float depth_param[6];
+	int texture_id[TEXTURE_MAX];
 };
 
 static void
 set_callback(lua_State *L, struct callback_ud *ud, const char *name, int id) {
 	if (lua_getfield(L, 1, name) != LUA_TFUNCTION) {
 		luaL_error(L, "%s is not a function");
-	}
-	lua_xmove(L, ud->L, 1);
-	lua_replace(ud->L, id);
-}
-
-static void
-set_table(lua_State *L, struct callback_ud *ud, const char *name, int id) {
-	if (lua_getfield(L, 1, name) != LUA_TTABLE) {
-		luaL_error(L, "%s is not a table");
 	}
 	lua_xmove(L, ud->L, 1);
 	lua_replace(ud->L, id);
@@ -92,6 +86,7 @@ lcallback(lua_State *L) {
 	struct callback_ud *ud = (struct callback_ud *)lua_newuserdatauv(L, sizeof(*ud), 1);
 	ud->L = lua_newthread(L);
 	ud->texture_transform = NULL;
+	ud->texture_n = 0;
 	if (lua_getfield(L, 1, "texture_transform") == LUA_TLIGHTUSERDATA) {
 		ud->texture_transform = lua_touserdata(L, -1);
 	}
@@ -102,7 +97,7 @@ lcallback(lua_State *L) {
 	set_callback(L, ud, "shader_load", CALLBACK_SHADER_LOAD);
 	set_callback(L, ud, "texture_load", CALLBACK_TEXTURE_LOAD);
 	set_callback(L, ud, "texture_unload", CALLBACK_TEXTURE_UNLOAD);
-	set_table(L, ud, "texture_map", TABLE_TEXTURE_MAP);
+	set_callback(L, ud, "texture_map", TABLE_TEXTURE_MAP);
 	if (lua_getfield(L, 1, "error") == LUA_TFUNCTION) {
 		lua_xmove(L, ud->L, 1);
 		lua_replace(ud->L, CALLBACK_ERROR_HANDLER);
@@ -117,13 +112,13 @@ lcallback(lua_State *L) {
 	return 1;
 }
 
-static struct handle_t
+static int
 ret_handle(struct callback_ud *ud, int args) {
 	if (lua_pcall(ud->L, args, 1, ud->error_handler) != LUA_OK || !lua_isinteger(ud->L, -1)) {
 		lua_pop(ud->L, 1);
-		return invalid_handle;
+		return 0xffff;
 	}
-	struct handle_t ret = { lua_tointeger(ud->L, -1) & 0xffff };
+	int ret = lua_tointeger(ud->L, -1);
 	lua_pop(ud->L, 1);
 	return ret;
 }
@@ -139,16 +134,24 @@ shader_load(const char *mat, const char *name, const char *type, struct callback
 	}
 	lua_pushstring(L, name);
 	lua_pushstring(L, type);
-	return ret_handle(ud, 3);
+	struct handle_t ret = { ret_handle(ud, 3) & 0xffff };
+	return ret;
 }
 
 static struct handle_t
 texture_load(const char *name, int srgb, struct callback_ud *ud) {
+	int id = ud->texture_n++;
+	if (id >= TEXTURE_MAX) {
+		return invalid_handle;
+	}
 	lua_State *L = ud->L;
 	lua_pushvalue(L, CALLBACK_TEXTURE_LOAD);
 	lua_pushstring(L, name);
 	lua_pushboolean(L, srgb);
-	return ret_handle(ud, 2);
+	lua_pushinteger(L, id);
+	ud->texture_id[id] = ret_handle(ud, 3);
+	struct handle_t ret = { id };
+	return ret;
 }
 
 static void
@@ -181,23 +184,23 @@ llookup_texture(lua_State *L) {
 
 static struct handle_t
 texture_handle(int id, struct callback_ud *ud) {
-	lua_State *L = ud->L;
-	lua_pushcfunction(L, llookup_texture);
-	lua_pushvalue(L, TABLE_TEXTURE_MAP);
-	lua_pushinteger(L, id);
-	if (lua_pcall(L, 2, 1, ud->error_handler) != LUA_OK) {
-		lua_pop(L, 1);
+	if (id < 0 || id >= ud->texture_n)
+		return invalid_handle;
+	int handle = ud->texture_id[id];
+	if (handle == 0xffff) {
+		lua_State *L = ud->L;
+		lua_pushvalue(L, TABLE_TEXTURE_MAP);
+		lua_pushinteger(L, id);
+		handle = ret_handle(ud, 1);
+		ud->texture_id[id] = handle;
+		if (handle == 0xffff) {
+			return invalid_handle;
+		}
 	}
-	if (!lua_isinteger(L, -1)) {
-		struct handle_t ret = { 0xffff };
-		return ret;
-	}
-	int handle = lua_tointeger(L, -1);
 	if (ud->texture_transform) {
-		handle = ud->texture_transform(id);
+		handle = ud->texture_transform(handle);
 	}
 	struct handle_t ret = { handle & 0xffff };
-	lua_pop(L, 1);
 	return ret;
 }
 
