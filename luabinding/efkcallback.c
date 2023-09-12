@@ -25,6 +25,7 @@ static struct handle_t invalid_handle = { 0xffff };
 
 struct callback_ud {
 	lua_State *L;
+	int (*texture_transform)(int id);
 	int error_handler;
 	struct handle_t background;
 	struct handle_t depth;
@@ -90,6 +91,11 @@ lcallback(lua_State *L) {
 	luaL_checktype(L, 1, LUA_TTABLE);
 	struct callback_ud *ud = (struct callback_ud *)lua_newuserdatauv(L, sizeof(*ud), 1);
 	ud->L = lua_newthread(L);
+	ud->texture_transform = NULL;
+	if (lua_getfield(L, 1, "texture_transform") == LUA_TLIGHTUSERDATA) {
+		ud->texture_transform = lua_touserdata(L, -1);
+	}
+	lua_pop(L, 1);
 	ud->error_handler = 0;
 	lua_setiuservalue(L, -2, 1);
 	lua_settop(ud->L, CALLBACK_TOP);
@@ -186,7 +192,11 @@ texture_handle(int id, struct callback_ud *ud) {
 		struct handle_t ret = { 0xffff };
 		return ret;
 	}
-	struct handle_t ret = { lua_tointeger(L, -1) & 0xffff };
+	int handle = lua_tointeger(L, -1);
+	if (ud->texture_transform) {
+		handle = ud->texture_transform(id);
+	}
+	struct handle_t ret = { handle & 0xffff };
 	lua_pop(L, 1);
 	return ret;
 }
