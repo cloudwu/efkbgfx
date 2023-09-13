@@ -1,8 +1,6 @@
 #include <cstdint>
 #include <cassert>
 #include <cstring>
-#include <EffekseerRendererCommon/EffekseerRenderer.IndexBufferBase.h>
-#include <EffekseerRendererCommon/EffekseerRenderer.VertexBufferBase.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.ShaderBase.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.RenderStateBase.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer_Impl.h>
@@ -160,28 +158,6 @@ public:
 
 class RendererImplemented : public Renderer, public Effekseer::ReferenceObject {
 private:
-	// Just for effekseer framework
-	class DummyVertexBuffer : public EffekseerRenderer::VertexBufferBase {
-	public:
-		DummyVertexBuffer() : VertexBufferBase(0, true) {}
-		virtual ~DummyVertexBuffer() override = default;
-		bool RingBufferLock(int32_t size, int32_t& offset, void*& data, int32_t alignment) override {
-			// Never used
-			assert(false);
-			return true;
-		}
-		bool TryRingBufferLock(int32_t size, int32_t& offset, void*& data, int32_t alignment) override {
-			// Never used
-			return RingBufferLock(size, offset, data, alignment);
-		}
-		void Lock() override {
-			// Never used
-			assert(false);
-		}
-		void Unlock() override {
-			assert(false);
-		}
-	};
 	// Shader
 	class Shader : public EffekseerRenderer::ShaderBase {
 		friend class RendererImplemented;
@@ -491,7 +467,14 @@ private:
 				}
 			}
 			for (int32_t passInd = 0; passInd < passNum; passInd++) {
-				Rendering_(mCamera, mProj, 0, 0, 1, passInd, m_state);
+				RenderingInternal(
+					mCamera,
+					mProj,
+					std::tuple<Effekseer::Backend::VertexBufferRef, int>(nullptr, 0),
+					0,
+					1,
+					passInd,
+					m_state);
 			}
 			m_renderer->ResetDraw();
 		}
@@ -651,8 +634,6 @@ private:
 	EffekseerRenderer::DistortingCallback* m_distortingCallback = nullptr;
 	StaticIndexBuffer* m_indexBuffer = nullptr;
 	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
-	DummyVertexBuffer* m_vertexBuffer = nullptr;
-	const bgfx_memory_t *m_tvb_buffer = nullptr;
 	Shader* m_currentShader = nullptr;
 	Effekseer::Backend::TextureRef m_background = nullptr;
 	Effekseer::Backend::TextureRef m_depth = nullptr;
@@ -670,7 +651,6 @@ private:
 	};
 	VertexLayoutInfo m_layouts[LAYOUT_COUNT] = {0};
 	int m_current_layout = 0;
-	Shader * m_shaders[SHADERCOUNT];
 	InitArgs m_initArgs;
 	bgfx_encoder_t *m_encoder = nullptr;
 
@@ -813,9 +793,6 @@ private:
 
 // todo : materials
 	}
-	void InitVertexBuffer() {
-		m_vertexBuffer = new DummyVertexBuffer;
-	}
 	void SetPixelConstantBuffer(Shader *shaders[]) const {
 		for (auto t: {
 			EffekseerRenderer::RendererShaderType::Unlit,
@@ -902,6 +879,7 @@ private:
 	}
 	bool InitShaders(struct InitArgs *init) {
 		m_initArgs = *init;
+		Shader * shaders[SHADERCOUNT];
 		for (auto t : {
 			EffekseerRenderer::RendererShaderType::Unlit,
 			EffekseerRenderer::RendererShaderType::Lit,
@@ -912,7 +890,7 @@ private:
 		}) {
 			Shader * s = new Shader(this);
 			int id = (int)t;
-			m_shaders[id] = s;
+			shaders[id] = s;
 //			uint32_t depthTexSlot = 1;
 			const char *shadername = NULL;
 			switch (t) {
@@ -953,8 +931,14 @@ private:
 			AddUniform(s, "u_mflipbookParameter", Shader::UniformType::Vertex,
 				offsetof(EffekseerRenderer::StandardRendererVertexBuffer, flipbookParameter));
 		}
-		SetPixelConstantBuffer(m_shaders);
-		SetSamplers(m_shaders);
+		SetPixelConstantBuffer(shaders);
+		SetSamplers(shaders);
+		GetImpl()->ShaderUnlit = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::Unlit]);
+		GetImpl()->ShaderLit = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::Lit]);
+		GetImpl()->ShaderDistortion = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::BackDistortion]);
+		GetImpl()->ShaderAdUnlit = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedUnlit]);
+		GetImpl()->ShaderAdLit = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedLit]);
+		GetImpl()->ShaderAdDistortion = std::unique_ptr<EffekseerRenderer::ShaderBase>(shaders[(int)EffekseerRenderer::RendererShaderType::AdvancedBackDistortion]);
 		return true;
 	}
 	void InitTextures(struct InitArgs *init) {
@@ -967,10 +951,6 @@ private:
 public:
 	RendererImplemented() {
 		m_device = Effekseer::MakeRefPtr<GraphicsDevice>(this);
-		int i;
-		for (i=0;i<SHADERCOUNT;i++) {
-			m_shaders[i] = nullptr;
-		}
 	}
 	~RendererImplemented() {
 		GetImpl()->DeleteProxyTextures(this);
@@ -978,11 +958,7 @@ public:
 		ES_SAFE_DELETE(m_distortingCallback);
 		ES_SAFE_DELETE(m_standardRenderer);
 		ES_SAFE_DELETE(m_renderState);
-		for (auto shader : m_shaders) {
-			ES_SAFE_DELETE(shader);
-		}
 		ES_SAFE_DELETE(m_indexBuffer);
-		ES_SAFE_DELETE(m_vertexBuffer);
 	}
 
 	void OnLostDevice() override {}
@@ -1001,7 +977,6 @@ public:
 			m_indexBufferStride = 4;
 		}
 		InitIndexBuffer();
-		InitVertexBuffer();
 		m_renderState = new RenderState(this, init->invz);
 		
 		m_standardRenderer = new BGFXStandardRenderer(this);
@@ -1036,9 +1011,6 @@ public:
 		m_standardRenderer->ResetAndRenderingIfRequired();
 		BGFX(encoder_end)(m_encoder);
 		return true;
-	}
-	DummyVertexBuffer* GetVertexBuffer() {
-		return m_vertexBuffer;
 	}
 	StaticIndexBuffer* GetIndexBuffer() {
 		return m_indexBuffer;
@@ -1097,12 +1069,12 @@ public:
 	BGFXStandardRenderer* GetStandardRenderer() {
 		return m_standardRenderer;
 	}
-	void SetVertexBuffer(DummyVertexBuffer* vertexBuffer, int32_t stride) {}
 	// For ModelRenderer, See ModelRendererBase
 	void SetVertexBuffer(const Effekseer::Backend::VertexBufferRef& vertexBuffer, int32_t stride) {
 		(void)stride;
 		//m_currentVertexBuffer = vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface();
-		BGFX(encoder_set_vertex_buffer)(m_encoder, 0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
+		if (vertexBuffer != nullptr)
+			BGFX(encoder_set_vertex_buffer)(m_encoder, 0, vertexBuffer.DownCast<StaticVertexBuffer>()->GetInterface(), 0, UINT32_MAX);
 	}
 	void SetIndexBuffer(StaticIndexBuffer* indexBuffer) {
 		assert(indexBuffer == m_indexBuffer);
@@ -1191,12 +1163,6 @@ public:
 	void DrawPolygonInstanced(int32_t vertexCount, int32_t indexCount, int32_t instanceCount) {
 		BGFX(encoder_set_instance_count)(m_encoder, instanceCount);
 		BGFX(encoder_submit)(m_encoder, m_viewid, m_currentShader->m_program, 0, BGFX_DISCARD_ALL);
-	}
-	Shader* GetShader(EffekseerRenderer::RendererShaderType type) const {
-		int n = (int)type;
-		if (n<0 || n>= SHADERCOUNT)
-			return nullptr;
-		return m_shaders[n];
 	}
 	void BeginShader(Shader* shader) {
 		assert(m_currentShader == nullptr);

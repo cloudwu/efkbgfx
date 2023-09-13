@@ -7,6 +7,13 @@ require "buildscripts.common"
 lm.builddir = lm.builddir or ("build/%s/%s"):format(Plat, lm.mode)
 lm.bindir   = lm.bindir or ("bin/%s/%s"):format(Plat, lm.mode)
 
+local gcc_warnings = {
+	"-Wno-sign-compare",
+	"-Wno-unused-but-set-variable",
+	"-Wno-format",
+	"-Wno-unused-variable",
+}
+
 lm:source_set "source_efklib" {
     includes = EfkLib_Includes,
     sources = ToStrings{
@@ -16,7 +23,10 @@ lm:source_set "source_efklib" {
     },
     defines = {
         lm.mode == "debug" and "_DEBUG_EFFEKSEER=1" or nil
-    }
+    },
+	gcc = {
+	    flags = gcc_warnings
+	}
 }
 
 lm:lib "efklib" {
@@ -40,7 +50,10 @@ local function create_source_efkbgfx(defines)
             "BX_CONFIG_DEBUG=" .. (lm.mode == "debug" and 1 or 0),
             "MaxInstanced=" .. MaxInstanced,
             defines,
-        }
+        },
+		gcc = {
+		    flags = gcc_warnings
+		}
     }
 end
 
