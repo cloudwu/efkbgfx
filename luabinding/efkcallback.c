@@ -31,6 +31,7 @@ struct callback_ud {
 	int texture_n;
 	struct handle_t background;
 	struct handle_t depth;
+	struct handle_t default_texture;
 	float depth_param[6];
 	int texture_id[TEXTURE_MAX];
 };
@@ -74,6 +75,9 @@ lset_texture(lua_State *L) {
 	} else if (strcmp(name, "depth")==0) {
 		luaL_checktype(L, 3, LUA_TTABLE);
 		set_depth(L, ud);
+	} else if (strcmp(name, "default")==0) {
+		uint16_t handle = luaL_checkinteger(L, 3) & 0xffff;
+		ud->default_texture.idx = handle;
 	} else {
 		return luaL_error(L, "Invalid attrib %s", name);
 	}
@@ -92,6 +96,11 @@ lcallback(lua_State *L) {
 	}
 	lua_pop(L, 1);
 	ud->error_handler = 0;
+
+	ud->background = invalid_handle;
+	ud->depth = invalid_handle;
+	ud->default_texture = invalid_handle;
+
 	lua_setiuservalue(L, -2, 1);
 	lua_settop(ud->L, CALLBACK_TOP);
 	set_callback(L, ud, "shader_load", CALLBACK_SHADER_LOAD);
@@ -194,7 +203,7 @@ texture_handle(int id, struct callback_ud *ud) {
 		handle = ret_handle(ud, 1);
 		ud->texture_id[id] = handle;
 		if (handle == 0xffff) {
-			return invalid_handle;
+			return ud->default_texture;
 		}
 	}
 	if (ud->texture_transform) {
