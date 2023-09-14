@@ -102,22 +102,28 @@ vec4 ConvertToScreen(vec4 c, bool isValid)
 
 vec4 _main(PS_Input Input)
 {
-    bool convertColorSpace = !(u_fsmiscFlags.x == 0.0);
+    bool convertColorSpace = u_fsmiscFlags.x != 0.0;
     vec4 param = texture2D(s_colorTex, Input.UV);
     bool param_1 = convertColorSpace;
     vec4 Output = ConvertFromSRGBTexture(param, param_1) * Input.Color;
     vec3 texNormal = (texture2D(s_normalTex, Input.UV).xyz - vec3_splat(0.5)) * 2.0;
     vec3 localNormal = normalize(mul(mtxFromCols(Input.WorldT, Input.WorldB, Input.WorldN), texNormal));
     float diffuse = max(dot(u_fsfLightDirection.xyz, localNormal), 0.0);
-    vec3 _311 = Output.xyz * ((u_fsfLightColor.xyz * diffuse) + u_fsfLightAmbient.xyz);
-    Output = vec4(_311.x, _311.y, _311.z, Output.w);
-    vec3 _319 = Output.xyz * u_fsfEmissiveScaling.x;
-    Output = vec4(_319.x, _319.y, _319.z, Output.w);
+    vec4 _300 = Output;
+    vec3 _311 = _300.xyz * ((u_fsfLightColor.xyz * diffuse) + u_fsfLightAmbient.xyz);
+    Output.x = _311.x;
+    Output.y = _311.y;
+    Output.z = _311.z;
+    vec4 _321 = Output;
+    vec3 _323 = _321.xyz * u_fsfEmissiveScaling.x;
+    Output.x = _323.x;
+    Output.y = _323.y;
+    Output.z = _323.z;
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
     screenUV.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * screenUV.y);
-    if (!(u_fssoftParticleParam.w == 0.0))
+    if (u_fssoftParticleParam.w != 0.0)
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_2 = backgroundZ;
@@ -151,6 +157,6 @@ void main()
     Input.WorldB = v_WorldB;
     Input.WorldT = v_WorldT;
     Input.PosP = v_PosP;
-    vec4 _427 = _main(Input);
-    gl_FragColor = _427;
+    vec4 _435 = _main(Input);
+    gl_FragColor = _435;
 }

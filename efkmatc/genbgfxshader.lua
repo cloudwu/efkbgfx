@@ -38,6 +38,18 @@ local ShaderType = {
 	AdvancedBackDistortion = 5,
 }
 
+local SlotIndeices = {
+	color				= { 0,  0,  0, 0, 0, 0},
+	back				= { 1,  1,  1, 1, 1, 1},
+	normal				= { 1,  1,  1, 1, 1, 1},
+	alpha 				= {-1, -1, -1, 1, 2, 2},
+	uvDistortion		= {-1, -1, -1, 2, 3, 3},
+	blend				= {-1, -1, -1, 3, 4, 4},
+	blendAlpha			= {-1, -1, -1, 4, 5, 5},
+	blendUVDistortion 	= {-1, -1, -1, 5, 6, 6},
+	depth				= { 1,  2,  2, 6, 7, 7},
+}
+
 local function gen(filename)
 	local line = { "" }
 	for l in io.lines(filename) do
@@ -256,12 +268,18 @@ local function gen_uniform(s, stage)
 	}
 end
 
-local function gen_texture(s)
+local function gen_texture(s, type)
+	local shaderidx = assert(ShaderType[type], ("Invalid type:%s"):format(type)) + 1
+	if shaderidx <= 0 or shaderidx > 6 then
+		error "Invalid shader index, it should in range:[0, 5]"
+	end
 	local texture = {}
 	local map = {}
 	for i, item in ipairs(s.texture) do
 		local name = item.name:match "_%w+$"
-		table.insert(texture, string.format("SAMPLER2D (s%s,%d);", name, item.binding - 1))
+		local slotname = name:match "_(%w+)Tex"
+		local indices = assert(SlotIndeices[slotname], ("Invalid sampler name:%s"):format(name))
+		table.insert(texture, string.format("SAMPLER2D (s%s,%d);", name, indices[shaderidx]))
 		item.new_name = "s" .. name
 		map["texture("..item.name] = "texture2D("..item.new_name
 	end
@@ -288,7 +306,7 @@ local function genshader(fullname, stagetype, type, modeltype)
 	local s = gen(fullname)
 	local varying = gen_varying(s, stagetype, type, modeltype)
 	local uniform = gen_uniform(s, stagetype)
-	local texture = gen_texture(s)
+	local texture = gen_texture(s, type)
 
 	local func = s.func
 	local main = func.main.imp:gsub("[%w_]+", varying.map)
