@@ -98,17 +98,20 @@ vec4 ConvertToScreen(vec4 c, bool isValid)
 
 vec4 _main(PS_Input Input)
 {
-    bool convertColorSpace = !(u_fsmiscFlags.x == 0.0);
+    bool convertColorSpace = u_fsmiscFlags.x != 0.0;
     vec4 param = texture2D(s_colorTex, Input.UV);
     bool param_1 = convertColorSpace;
     vec4 Output = ConvertFromSRGBTexture(param, param_1) * Input.Color;
-    vec3 _258 = Output.xyz * u_fsfEmissiveScaling.x;
-    Output = vec4(_258.x, _258.y, _258.z, Output.w);
+    vec4 _256 = Output;
+    vec3 _258 = _256.xyz * u_fsfEmissiveScaling.x;
+    Output.x = _258.x;
+    Output.y = _258.y;
+    Output.z = _258.z;
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
     screenUV.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * screenUV.y);
-    if (!(u_fssoftParticleParam.w == 0.0))
+    if (u_fssoftParticleParam.w != 0.0)
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_2 = backgroundZ;
@@ -139,6 +142,6 @@ void main()
 
     Input.UV = v_UV;
     Input.PosP = v_PosP;
-    vec4 _359 = _main(Input);
-    gl_FragColor = _359;
+    vec4 _363 = _main(Input);
+    gl_FragColor = _363;
 }

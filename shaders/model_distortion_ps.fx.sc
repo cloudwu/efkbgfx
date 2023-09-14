@@ -54,11 +54,13 @@ vec4 _main(PS_Input Input)
     uv.y = 1.0 - ((uv.y + 1.0) * 0.5);
     uv.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * uv.y);
     vec3 color = vec3(texture2D(s_backTex, uv).xyz);
-    Output = vec4(color.x, color.y, color.z, Output.w);
+    Output.x = color.x;
+    Output.y = color.y;
+    Output.z = color.z;
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    if (!(u_fssoftParticleParam.w == 0.0))
+    if (u_fssoftParticleParam.w != 0.0)
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param = backgroundZ;
@@ -89,6 +91,6 @@ void main()
     Input.Color = v_Color;
 #endif //LINEAR_INPUT_COLOR
 
-    vec4 _310 = _main(Input);
-    gl_FragColor = _310;
+    vec4 _314 = _main(Input);
+    gl_FragColor = _314;
 }

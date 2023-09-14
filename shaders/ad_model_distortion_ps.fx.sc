@@ -124,29 +124,41 @@ void ApplyTextureBlending(inout vec4 dstColor, vec4 blendColor, float blendType)
 {
     if (blendType == 0.0)
     {
-        vec3 _172 = (blendColor.xyz * blendColor.w) + (dstColor.xyz * (1.0 - blendColor.w));
-        dstColor = vec4(_172.x, _172.y, _172.z, dstColor.w);
+        vec4 _169 = dstColor;
+        vec3 _172 = (blendColor.xyz * blendColor.w) + (_169.xyz * (1.0 - blendColor.w));
+        dstColor.x = _172.x;
+        dstColor.y = _172.y;
+        dstColor.z = _172.z;
     }
     else
     {
         if (blendType == 1.0)
         {
-            vec3 _184 = dstColor.xyz + (blendColor.xyz * blendColor.w);
-            dstColor = vec4(_184.x, _184.y, _184.z, dstColor.w);
+            vec4 _187 = dstColor;
+            vec3 _189 = _187.xyz + (blendColor.xyz * blendColor.w);
+            dstColor.x = _189.x;
+            dstColor.y = _189.y;
+            dstColor.z = _189.z;
         }
         else
         {
             if (blendType == 2.0)
             {
-                vec3 _197 = dstColor.xyz - (blendColor.xyz * blendColor.w);
-                dstColor = vec4(_197.x, _197.y, _197.z, dstColor.w);
+                vec4 _204 = dstColor;
+                vec3 _206 = _204.xyz - (blendColor.xyz * blendColor.w);
+                dstColor.x = _206.x;
+                dstColor.y = _206.y;
+                dstColor.z = _206.z;
             }
             else
             {
                 if (blendType == 3.0)
                 {
-                    vec3 _210 = dstColor.xyz * (blendColor.xyz * blendColor.w);
-                    dstColor = vec4(_210.x, _210.y, _210.z, dstColor.w);
+                    vec4 _221 = dstColor;
+                    vec3 _223 = _221.xyz * (blendColor.xyz * blendColor.w);
+                    dstColor.x = _223.x;
+                    dstColor.y = _223.y;
+                    dstColor.z = _223.z;
                 }
             }
         }
@@ -212,11 +224,13 @@ vec4 _main(PS_Input Input)
     uv.y = 1.0 - ((uv.y + 1.0) * 0.5);
     uv.y = u_fsmUVInversedBack.x + (u_fsmUVInversedBack.y * uv.y);
     vec3 color = vec3(texture2D(s_backTex, uv).xyz);
-    Output = vec4(color.x, color.y, color.z, Output.w);
+    Output.x = color.x;
+    Output.y = color.y;
+    Output.z = color.z;
     vec4 screenPos = Input.PosP / vec4_splat(Input.PosP.w);
     vec2 screenUV = (screenPos.xy + vec2_splat(1.0)) / vec2_splat(2.0);
     screenUV.y = 1.0 - screenUV.y;
-    if (!(u_fssoftParticleParam.w == 0.0))
+    if (u_fssoftParticleParam.w != 0.0)
     {
         float backgroundZ = texture2D(s_depthTex, screenUV).x;
         float param_11 = backgroundZ;
@@ -246,6 +260,6 @@ void main()
     Input.Alpha_Dist_UV = v_Alpha_Dist_UV;
     Input.Blend_Alpha_Dist_UV = v_Blend_Alpha_Dist_UV;
     Input.Blend_FBNextIndex_UV = v_Blend_FBNextIndex_UV;
-    vec4 _686 = _main(Input);
-    gl_FragColor = _686;
+    vec4 _706 = _main(Input);
+    gl_FragColor = _706;
 }

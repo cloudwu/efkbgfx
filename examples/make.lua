@@ -3,15 +3,45 @@ local fs = require "bee.filesystem"
 
 package.path = "./?.lua;../?.lua"
 
+-- make bgfx module compile command: ..\bx\tools\bin\windows\genie.exe --with-dynamic-runtime --with-examples --with-windows=10.0 --with-shared-lib vs2022
 lm.mode = "debug"
-lm.EfkDir = "../../"
-lm.BgfxBinDir = "../../bgfx/.build/win64_vs2022/bin"
 require "buildscripts.common"
 
 lm.builddir = ("build/%s/%s"):format(Plat, lm.mode)
 lm.bindir = ("bin/%s/%s"):format(Plat, lm.mode)
 
+local Help = [[
+usage:
+    EfkDir      Effekseer project dir.  EX: ../../Effekseer,  EfkDir = ../../,                default: ../
+    Bgfx/Bx/Bimg dirs will try to find from EfkDir
+    BgfxDir     bgfx project dir.       EX: BgfxDir = ../../bgfx,                             default: $EfkDir/bgfx
+    BxDir       bx project dir.         EX: BxDir = ../../bx,                                 default: $EfkDir/bx
+    BimgDir     bimg project dir.       EX: BimgDir = ../../bimg,                             default: $EfkDir/bimg
+    BgfxBinDir  bgfx compile binary dir.EX: BgfxBinDir = ../../bgfx/.build/win64_vs2022/bin   default: $BgfxDir/.build/win64_vs2022/bin
+
+example:
+    cd $efkbgfx/examples
+    luamake -EfkDir ../..
+]]
+
+local function check_dir_exists()
+    local function check_dir(n, dir)
+        if not fs.exists(dir) then
+            print(n, dir, " is not exist")
+        end
+    end
+
+    check_dir("EfkDir: ", EfkDir)
+    check_dir("BgfxDir: ", BgfxDir)
+    check_dir("BgfxBinDir:", BgfxBinDir)
+    check_dir("Shaderc:", Shaderc)
+end
+
+
 if not fs.exists(Shaderc) then
+    check_dir_exists()
+    print(Help)
+    
     error(("shaderc:%s is not exist!"):format(Shaderc))
 end
 

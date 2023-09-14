@@ -17,9 +17,9 @@ local stage_types = {
 
 local shader_options = {
 	windows = {
-		vs = "vs_5_0",
-		fs = "ps_5_0",
-		cs = "cs_5_0",
+		vs = "s_5_0",
+		fs = "s_5_0",
+		cs = "s_5_0",
 	},
 	ios = {
 		vs = "metal",
