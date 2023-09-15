@@ -185,12 +185,6 @@ texture_get(int texture_type, void *param, struct callback_ud *ud) {
 	return invalid_handle;
 }
 
-static int
-llookup_texture(lua_State *L) {
-	lua_gettable(L, 1);
-	return 1;
-}
-
 static struct handle_t
 texture_handle(int id, struct callback_ud *ud) {
 	if (id < 0 || id >= ud->texture_n)
