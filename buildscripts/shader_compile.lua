@@ -66,12 +66,12 @@ local function generate_command(shaderc, cfg)
             if not fs.exists(p) then
                 error(string.format("include path : %s, but not exist!", p))
             end
-            assert(p:is_absolute(), p:string())
+            local _ = p:is_absolute() or error(p:string())
             commands[#commands+1] = "-i"
             commands[#commands+1] = p:string()
         end
     end
-    
+
     if cfg.defines then
         local t = {}
         for _, m in ipairs(cfg.defines) do
@@ -83,14 +83,14 @@ local function generate_command(shaderc, cfg)
             commands[#commands+1] = defines
         end
     end
-    
+
     local level = cfg.optimizelevel
     if not level then
         if cfg.renderer:match("direct3d") then
             level = cfg.stage == "cs" and 1 or 3
         end
     end
-    
+
     if cfg.debug then
         commands[#commands+1] = "--debug"
     else

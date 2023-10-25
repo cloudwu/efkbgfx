@@ -269,7 +269,7 @@ local function gen_uniform(s, stage)
 end
 
 local function gen_texture(s, type)
-	local shaderidx = assert(ShaderType[type], ("Invalid type:%s"):format(type)) + 1
+	local shaderidx = 1 + ( ShaderType[type] or error (("Invalid type:%s"):format(type)) )
 	if shaderidx <= 0 or shaderidx > 6 then
 		error "Invalid shader index, it should in range:[0, 5]"
 	end
@@ -278,7 +278,7 @@ local function gen_texture(s, type)
 	for i, item in ipairs(s.texture) do
 		local name = item.name:match "_%w+$"
 		local slotname = name:match "_(%w+)Tex"
-		local indices = assert(SlotIndeices[slotname], ("Invalid sampler name:%s"):format(name))
+		local indices = SlotIndeices[slotname] or error (("Invalid sampler name:%s"):format(name))
 		table.insert(texture, string.format("SAMPLER2D (s%s,%d);", name, indices[shaderidx]))
 		item.new_name = "s" .. name
 		map["texture("..item.name] = "texture2D("..item.new_name
@@ -377,7 +377,7 @@ local function genshader(fullname, stagetype, type, modeltype)
 
 			f.imp = f.imp:gsub(vec_pat, vec_handler)
 		end
-		
+
 		f.imp = f.imp:gsub("(VS_Output%s+Output%s+=)%s*[^;]+;", "%1 (VS_Output)0;")
 
 		do
