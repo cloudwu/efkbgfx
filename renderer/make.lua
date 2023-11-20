@@ -21,12 +21,9 @@ lm:source_set "source_efklib" {
         EfkSrc / "EffekseerMaterial/*.cpp",
         EfkSrc / "EffekseerRendererCommon/*.cpp",
     },
-    defines = {
-        lm.mode == "debug" and "_DEBUG_EFFEKSEER=1" or nil
-    },
-	gcc = {
-	    flags = gcc_warnings
-	}
+    gcc = {
+        flags = gcc_warnings
+    }
 }
 
 lm:lib "efklib" {
