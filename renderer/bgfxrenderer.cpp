@@ -633,7 +633,6 @@ private:
 	BGFXStandardRenderer * m_standardRenderer = nullptr;
 	EffekseerRenderer::DistortingCallback* m_distortingCallback = nullptr;
 	StaticIndexBuffer* m_indexBuffer = nullptr;
-	bgfx_vertex_buffer_handle_t m_currentVertexBuffer;
 	Shader* m_currentShader = nullptr;
 	Effekseer::Backend::TextureRef m_background = nullptr;
 	Effekseer::Backend::TextureRef m_depth = nullptr;
@@ -643,13 +642,13 @@ private:
 	bgfx_vertex_layout_t m_modellayout;
 
 	struct VertexLayoutInfo {
-		bgfx_vertex_layout_t			layout;
-		bgfx_transient_vertex_buffer_t	tvb;
-		int offset;
-		int count;
-		int cap;
+		bgfx_vertex_layout_t			layout = {0};
+		bgfx_transient_vertex_buffer_t	tvb = {0};
+		int offset = 0;
+		int count = 0;
+		int cap = 0;
 	};
-	VertexLayoutInfo m_layouts[LAYOUT_COUNT] = {0};
+	VertexLayoutInfo m_layouts[LAYOUT_COUNT];// = { {0}, {0}, 0, 0, 0};
 	int m_current_layout = 0;
 	InitArgs m_initArgs;
 	bgfx_encoder_t *m_encoder = nullptr;

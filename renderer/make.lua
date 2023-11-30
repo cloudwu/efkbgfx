@@ -14,6 +14,13 @@ local gcc_warnings = {
 	"-Wno-unused-variable",
 }
 
+local clang_warnings = {
+    "-Wno-delete-non-abstract-non-virtual-dtor",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unused-variable",
+    "-Wno-inconsistent-missing-override",
+}
+
 lm:source_set "source_efklib" {
     includes = EfkLib_Includes,
     sources = ToStrings{
@@ -23,6 +30,9 @@ lm:source_set "source_efklib" {
     },
     gcc = {
         flags = gcc_warnings
+    },
+    clang = {
+        flags = clang_warnings,
     }
 }
 
@@ -50,7 +60,10 @@ local function create_source_efkbgfx(defines)
         },
 		gcc = {
 		    flags = gcc_warnings
-		}
+		},
+        clang = {
+            flags = clang_warnings,
+        }
     }
 end
 
