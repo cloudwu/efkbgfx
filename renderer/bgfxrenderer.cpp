@@ -444,6 +444,7 @@ private:
 			}
 			if (!m_renderer->AppendSprites(count, stride, data)) {
 				DoRendering();
+				m_renderer->AllocVertexBuffer();
 				m_renderer->AppendSprites(count, stride, data);
 			}
 			if (state.Collector.IsBackgroundRequiredOnFirstPass && m_renderer->GetDistortingCallback() != nullptr) {
@@ -1129,7 +1130,6 @@ public:
 		data = layout.tvb.data + layout.count * stride;
 		if (count + layout.count > layout.cap) {
 			// full
-			AllocVertexBuffer();
 			return false;
 		}
 		layout.count += count;
