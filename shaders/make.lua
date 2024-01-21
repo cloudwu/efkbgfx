@@ -8,7 +8,7 @@ require "buildscripts.common"
 lm:import "../efkmatc/make.lua"
 
 local cwd = fs.path(lm.workdir)
-local vulkan_shader_dir = (cwd / lm.EfkDir) / "Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRenderer/Shader"
+local vulkan_shader_dir = (cwd / lm.EfkDir) / "Effekseer/Dev/Cpp/EffekseerRendererVulkan/EffekseerRendererVulkan/Shader"
 local shader_output_dir = cwd
 
 local sc = require "buildscripts.shader_compile"
