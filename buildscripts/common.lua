@@ -48,7 +48,7 @@ end
 
 EfkLib_Includes = ToStrings{
     EfkSrc / "Effekseer",
-    EfkSrc,
+    EfkSrc / "EffekseerRendererCommon",
     BgfxDir / "include",
     BxDir / "include",
 }
@@ -73,7 +73,7 @@ function ShaderInfoFromFilename(filename)
     local modeltype, shadertype, stage = filename:match(adfmt)
     local ad = true
     if modeltype == nil then
-        ad = nil
+        ad = false
         modeltype, shadertype, stage = filename:match(fmt)
     end
 

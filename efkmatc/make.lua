@@ -4,9 +4,7 @@ package.path = "./?.lua;../?.lua"
 require "buildscripts.common"
 
 lm:lua_dll "efkmat" {
-    includes = {
-        EfkLib_Includes,
-    },
+    includes = EfkLib_Includes,
     sources = {
         "efkmat.cpp",
     },

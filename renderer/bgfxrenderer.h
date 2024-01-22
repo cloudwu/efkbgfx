@@ -2,7 +2,7 @@
 #define effekseer_bgfx_renderer_h
 
 #include <bgfx/c99/bgfx.h>
-#include <Effekseer/Effekseer.h>
+#include <Effekseer.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 
 #if defined(_MSC_VER) && defined(EFXBGFX_DYNAMIC_LIB)
