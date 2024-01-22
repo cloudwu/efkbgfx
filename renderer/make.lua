@@ -23,10 +23,10 @@ local clang_warnings = {
 
 lm:source_set "source_efklib" {
     includes = EfkLib_Includes,
-    sources = ToStrings{
+    sources = {
         EfkSrc / "Effekseer/Effekseer/**/*.cpp",
         EfkSrc / "EffekseerMaterial/*.cpp",
-        EfkSrc / "EffekseerRendererCommon/*.cpp",
+        EfkSrc / "EffekseerRendererCommon/**/*.cpp",
     },
     gcc = {
         flags = gcc_warnings

@@ -6,6 +6,7 @@ extern "C" {
 }
 
 #include <Effekseer/Material/Effekseer.MaterialFile.h>
+//#include <EffekseerRendererCommon/EffekseerRendererCommon/EffekseerRenderer.CommonUtils.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.CommonUtils.h>
 
 static int
